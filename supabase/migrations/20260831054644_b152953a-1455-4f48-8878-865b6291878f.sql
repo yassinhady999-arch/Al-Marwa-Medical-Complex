@@ -1,0 +1,14 @@
+REVOKE EXECUTE ON FUNCTION public.appointments_after_change() FROM anon, authenticated;
+REVOKE EXECUTE ON FUNCTION public.appointments_set_number() FROM anon, authenticated;
+REVOKE EXECUTE ON FUNCTION public.appointments_validate() FROM anon, authenticated;
+REVOKE EXECUTE ON FUNCTION public.handle_new_user() FROM anon, authenticated;
+REVOKE EXECUTE ON FUNCTION public.messages_touch_conversation() FROM anon, authenticated;
+REVOKE EXECUTE ON FUNCTION public.patients_after_insert() FROM anon, authenticated;
+REVOKE EXECUTE ON FUNCTION public.patients_set_normalized() FROM anon, authenticated;
+REVOKE EXECUTE ON FUNCTION public.update_updated_at_column() FROM anon, authenticated;
+REVOKE EXECUTE ON FUNCTION public.emit_event(text, text, uuid, jsonb) FROM anon, authenticated;
+REVOKE EXECUTE ON FUNCTION public.normalize_sa_phone(text) FROM anon;
+REVOKE EXECUTE ON FUNCTION public.has_role(uuid, public.app_role) FROM anon;
+REVOKE EXECUTE ON FUNCTION public.is_admin() FROM anon;
+REVOKE EXECUTE ON FUNCTION public.can_write() FROM anon;
+REVOKE EXECUTE ON FUNCTION public.get_available_slots(uuid, date, integer) FROM anon;

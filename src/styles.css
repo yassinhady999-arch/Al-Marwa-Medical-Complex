@@ -1,0 +1,500 @@
+@import "tailwindcss" source(none);
+@source "../src";
+@import "tw-animate-css";
+
+@custom-variant dark (&:is(.dark *));
+
+/*
+ * ClinicFlow Hub — "Soft Depth" design system.
+ *
+ * @theme inline maps CSS custom properties to Tailwind utilities
+ * (e.g. --color-primary -> bg-primary / text-primary).
+ * :root holds the light values, .dark holds the dark overrides.
+ * All colors use oklch.
+ */
+
+@theme inline {
+  --radius-sm: calc(var(--radius) - 4px);
+  --radius-md: calc(var(--radius) - 2px);
+  --radius-lg: var(--radius);
+  --radius-xl: calc(var(--radius) + 4px);
+  --radius-2xl: calc(var(--radius) + 8px);
+  --radius-3xl: calc(var(--radius) + 14px);
+  --radius-4xl: calc(var(--radius) + 20px);
+
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+  --color-surface: var(--surface);
+  --color-surface-2: var(--surface-2);
+  --color-card: var(--card);
+  --color-card-foreground: var(--card-foreground);
+  --color-popover: var(--popover);
+  --color-popover-foreground: var(--popover-foreground);
+
+  --color-primary: var(--primary);
+  --color-primary-foreground: var(--primary-foreground);
+  --color-primary-emphasis: var(--primary-emphasis);
+  --color-secondary: var(--secondary);
+  --color-secondary-foreground: var(--secondary-foreground);
+  --color-muted: var(--muted);
+  --color-muted-foreground: var(--muted-foreground);
+  --color-accent: var(--accent);
+  --color-accent-foreground: var(--accent-foreground);
+
+  --color-highlight: var(--highlight);
+  --color-highlight-foreground: var(--highlight-foreground);
+  --color-highlight-emphasis: var(--highlight-emphasis);
+  --color-highlight-soft: var(--highlight-soft);
+
+  --color-destructive: var(--destructive);
+  --color-destructive-foreground: var(--destructive-foreground);
+  --color-destructive-soft: var(--destructive-soft);
+  --color-success: var(--success);
+  --color-success-foreground: var(--success-foreground);
+  --color-success-emphasis: var(--success-emphasis);
+  --color-success-soft: var(--success-soft);
+  --color-warning: var(--warning);
+  --color-warning-foreground: var(--warning-foreground);
+  --color-warning-soft: var(--warning-soft);
+  --color-info: var(--info);
+  --color-info-foreground: var(--info-foreground);
+  --color-info-soft: var(--info-soft);
+  --color-chat: var(--chat);
+  --color-chat-foreground: var(--chat-foreground);
+  --color-chat-emphasis: var(--chat-emphasis);
+  --color-chat-soft: var(--chat-soft);
+
+  --color-faint-foreground: var(--faint-foreground);
+
+  --color-border: var(--border);
+  --color-border-strong: var(--border-strong);
+  --color-input: var(--input);
+  --color-ring: var(--ring);
+
+  --color-chart-1: var(--chart-1);
+  --color-chart-2: var(--chart-2);
+  --color-chart-3: var(--chart-3);
+  --color-chart-4: var(--chart-4);
+  --color-chart-5: var(--chart-5);
+  --color-chart-6: var(--chart-6);
+  --color-chart-7: var(--chart-7);
+  --color-chart-8: var(--chart-8);
+
+  --color-sidebar: var(--sidebar);
+  --color-sidebar-2: var(--sidebar-2);
+  --color-sidebar-surface: var(--sidebar-surface);
+  --color-sidebar-foreground: var(--sidebar-foreground);
+  --color-sidebar-muted: var(--sidebar-muted);
+  --color-sidebar-primary: var(--sidebar-primary);
+  --color-sidebar-primary-foreground: var(--sidebar-primary-foreground);
+  --color-sidebar-accent: var(--sidebar-accent);
+  --color-sidebar-accent-foreground: var(--sidebar-accent-foreground);
+  --color-sidebar-border: var(--sidebar-border);
+  --color-sidebar-ring: var(--sidebar-ring);
+
+  --font-sans: "IBM Plex Sans Arabic", "Segoe UI", system-ui, sans-serif;
+  --font-display: "IBM Plex Sans Arabic", "Segoe UI", system-ui, sans-serif;
+  --font-mono: "IBM Plex Mono", "SFMono-Regular", ui-monospace, monospace;
+
+  --shadow-xs: 0 1px 2px oklch(0.28 0.04 235 / 0.05);
+  --shadow-sm: 0 1px 2px oklch(0.28 0.04 235 / 0.05), 0 1px 3px oklch(0.28 0.04 235 / 0.05);
+  --shadow-soft: 0 4px 16px oklch(0.28 0.04 235 / 0.045);
+  --shadow-md:
+    0 6px 18px -6px oklch(0.28 0.05 235 / 0.12), 0 2px 6px -3px oklch(0.28 0.05 235 / 0.08);
+  --shadow-lg:
+    0 16px 40px -12px oklch(0.26 0.05 235 / 0.16), 0 6px 16px -8px oklch(0.26 0.05 235 / 0.1);
+  --shadow-xl:
+    0 28px 64px -16px oklch(0.24 0.06 235 / 0.22), 0 12px 28px -12px oklch(0.24 0.06 235 / 0.14);
+}
+
+:root {
+  --radius: 0.75rem;
+
+  /* Very light cool blue-gray canvas; cards sit on it as flat white. */
+  --background: #f7f9fc;
+  --foreground: #102a43;
+  --surface: #ffffff;
+  --surface-2: #fbfcfe;
+  --card: #ffffff;
+  --card-foreground: #102a43;
+  --popover: #ffffff;
+  --popover-foreground: #102a43;
+
+  /* Modern medical teal for fills; a darker teal reserved for small text/links. */
+  --primary: #00b8b5;
+  --primary-foreground: #062e2c;
+  --primary-emphasis: #048884;
+  --secondary: #eef2f6;
+  --secondary-foreground: #33475b;
+  --muted: #eef2f6;
+  --muted-foreground: #64748b;
+  --accent: #eef2f6;
+  --accent-foreground: #23425a;
+
+  --highlight: oklch(0.64 0.16 33);
+  --highlight-foreground: oklch(0.99 0.02 40);
+  /* Deeper coral reserved for small text / dots on the light --highlight-soft chip. */
+  --highlight-emphasis: oklch(0.46 0.15 30);
+  --highlight-soft: oklch(0.958 0.032 42);
+
+  --destructive: #e11d48;
+  --destructive-foreground: #ffffff;
+  --destructive-soft: #fde8ec;
+  --success: #22c55e;
+  --success-foreground: #ffffff;
+  /* Darker green reserved for small badge text on --success-soft. */
+  --success-emphasis: #16a34a;
+  --success-soft: #ecfdf3;
+  --warning: #f59e0b;
+  /* Darker amber reserved for small badge text on --warning-soft. */
+  --warning-foreground: #b45309;
+  --warning-soft: #fff5dd;
+  --info: #3b82f6;
+  --info-foreground: #ffffff;
+  --info-soft: #eaf4ff;
+  /* Purple, used sparingly for communication/chat stats only. */
+  --chat: #8b5cf6;
+  --chat-foreground: #ffffff;
+  --chat-emphasis: #7c3aed;
+  --chat-soft: #f2edfe;
+
+  /* Tertiary text — timestamps, faint hints. */
+  --faint-foreground: #94a3b8;
+
+  --border: #e5eaf0;
+  --border-strong: #d8e0e9;
+  --input: #dbe2ea;
+  --ring: #00b8b5;
+
+  --chart-1: oklch(0.64 0.13 195);
+  --chart-2: oklch(0.68 0.15 33);
+  --chart-3: oklch(0.63 0.13 156);
+  --chart-4: oklch(0.76 0.13 78);
+  --chart-5: oklch(0.55 0.12 266);
+  --chart-6: oklch(0.66 0.1 222);
+  --chart-7: oklch(0.6 0.16 330);
+  --chart-8: oklch(0.62 0.026 240);
+
+  /* Deep navy sidebar — kept dark in both light and dark theme. */
+  --sidebar: #071b2d;
+  --sidebar-2: #061525;
+  /* Slightly lighter navy chip — avatar, not the teal active-nav wash. */
+  --sidebar-surface: #163348;
+  --sidebar-foreground: #eef5f7;
+  --sidebar-muted: #8fa5b8;
+  --sidebar-primary: #00c8c5;
+  --sidebar-primary-foreground: #04222a;
+  /* Translucent teal wash for the active item, not a solid rectangle. */
+  --sidebar-accent: rgb(0 185 185 / 16%);
+  --sidebar-accent-foreground: #ffffff;
+  --sidebar-border: rgb(255 255 255 / 6%);
+  --sidebar-ring: #00c8c5;
+}
+
+.dark {
+  /* Elevation ladder — each surface must read as clearly "above" the one
+     under it (background < surface < card < popover < surface-2). */
+  --background: oklch(0.16 0.021 236);
+  --foreground: oklch(0.93 0.008 205);
+  --surface: oklch(0.203 0.024 234);
+  --surface-2: oklch(0.265 0.028 233);
+  --card: oklch(0.229 0.026 234);
+  --card-foreground: oklch(0.93 0.008 205);
+  --popover: oklch(0.248 0.027 234);
+  --popover-foreground: oklch(0.93 0.008 205);
+
+  /* Calmer, less "neon" turquoise than a naive light→dark inversion. */
+  --primary: oklch(0.75 0.122 194);
+  --primary-foreground: oklch(0.16 0.04 218);
+  --primary-emphasis: oklch(0.78 0.1 194);
+  --secondary: oklch(0.29 0.03 233);
+  --secondary-foreground: oklch(0.94 0.01 205);
+  --muted: oklch(0.27 0.027 233);
+  --muted-foreground: oklch(0.72 0.026 214);
+  --accent: oklch(0.3 0.032 232);
+  --accent-foreground: oklch(0.95 0.01 205);
+
+  --highlight: oklch(0.68 0.13 40);
+  --highlight-foreground: oklch(0.16 0.04 40);
+  --highlight-emphasis: oklch(0.82 0.1 40);
+  --highlight-soft: oklch(0.35 0.06 42);
+
+  --destructive: oklch(0.66 0.17 25);
+  --destructive-foreground: oklch(0.98 0.01 25);
+  --destructive-soft: oklch(0.34 0.075 25);
+  --success: oklch(0.68 0.13 159);
+  --success-foreground: oklch(0.15 0.04 159);
+  --success-emphasis: oklch(0.78 0.12 159);
+  --success-soft: oklch(0.33 0.06 159);
+  --warning: oklch(0.76 0.13 80);
+  /* Text on --warning-soft (badges, chips), like the other tones' -emphasis — must stay light here. */
+  --warning-foreground: oklch(0.84 0.12 82);
+  --warning-soft: oklch(0.36 0.06 82);
+  --info: oklch(0.7 0.11 236);
+  --info-foreground: oklch(0.15 0.04 236);
+  --info-soft: oklch(0.34 0.05 238);
+  --chat: oklch(0.74 0.14 302);
+  --chat-foreground: oklch(0.15 0.04 302);
+  --chat-emphasis: oklch(0.82 0.11 302);
+  --chat-soft: oklch(0.34 0.07 300);
+
+  --faint-foreground: oklch(0.58 0.02 220);
+
+  --border: oklch(1 0 0 / 11%);
+  --border-strong: oklch(1 0 0 / 20%);
+  --input: oklch(1 0 0 / 15%);
+  --ring: oklch(0.75 0.122 194);
+
+  /* Chart palette pulled back from oversaturated/neon toward the calmer,
+     "premium healthcare" register — still clearly distinct per series. */
+  --chart-1: oklch(0.74 0.125 195);
+  --chart-2: oklch(0.71 0.13 40);
+  --chart-3: oklch(0.7 0.12 160);
+  --chart-4: oklch(0.76 0.12 85);
+  --chart-5: oklch(0.64 0.12 268);
+  --chart-6: oklch(0.72 0.095 224);
+  --chart-7: oklch(0.63 0.135 330);
+  --chart-8: oklch(0.7 0.022 240);
+
+  /* Same deep navy as light theme — the sidebar stays dark either way. */
+  --sidebar: #05141d;
+  --sidebar-2: #040f17;
+  --sidebar-surface: #142c3e;
+  --sidebar-foreground: oklch(0.9 0.012 205);
+  --sidebar-muted: oklch(0.63 0.02 216);
+  --sidebar-primary: oklch(0.75 0.122 194);
+  --sidebar-primary-foreground: oklch(0.14 0.02 240);
+  --sidebar-accent: rgb(0 184 181 / 18%);
+  --sidebar-accent-foreground: oklch(0.95 0.01 205);
+  --sidebar-border: oklch(1 0 0 / 8%);
+  --sidebar-ring: oklch(0.73 0.11 190);
+
+  /* Shadows tuned for light surfaces are nearly invisible once the ground
+     itself is dark — redefine with real near-black shadows so elevation
+     ("Soft Depth") actually reads in dark mode. */
+  --shadow-xs: 0 1px 2px oklch(0 0 0 / 0.35);
+  --shadow-sm: 0 1px 2px oklch(0 0 0 / 0.35), 0 1px 3px oklch(0 0 0 / 0.28);
+  --shadow-soft: 0 3px 12px -2px oklch(0 0 0 / 0.4), 0 1px 4px -1px oklch(0 0 0 / 0.3);
+  --shadow-md: 0 10px 26px -8px oklch(0 0 0 / 0.48), 0 3px 10px -4px oklch(0 0 0 / 0.34);
+  --shadow-lg: 0 22px 50px -14px oklch(0 0 0 / 0.55), 0 8px 20px -10px oklch(0 0 0 / 0.38);
+  --shadow-xl: 0 34px 76px -18px oklch(0 0 0 / 0.6), 0 14px 34px -14px oklch(0 0 0 / 0.42);
+}
+
+@layer base {
+  * {
+    border-color: var(--color-border);
+  }
+
+  html {
+    -webkit-text-size-adjust: 100%;
+    text-size-adjust: 100%;
+    /* The mobile drawer sidebar is a fixed, translated-off-screen panel; some
+       browsers still count its untranslated box in the page's scrollable
+       area, which opens a phantom horizontal scrollbar and clips content
+       (including the menu button) past the true viewport edge. */
+    overflow-x: hidden;
+  }
+
+  body {
+    background-color: var(--color-background);
+    color: var(--color-foreground);
+    font-family: var(--font-sans);
+    font-feature-settings: "ss01", "cv05";
+    -webkit-font-smoothing: antialiased;
+    text-rendering: optimizeLegibility;
+  }
+
+  h1,
+  h2,
+  h3,
+  h4,
+  h5 {
+    font-family: var(--font-display);
+    letter-spacing: -0.01em;
+  }
+
+  [dir="rtl"] .flip-x {
+    transform: scaleX(-1);
+  }
+
+  ::selection {
+    background: color-mix(in oklch, var(--color-primary) 26%, transparent);
+  }
+
+  /* Thin, quiet scrollbars */
+  * {
+    scrollbar-width: thin;
+    scrollbar-color: color-mix(in oklch, var(--color-foreground) 22%, transparent) transparent;
+  }
+  *::-webkit-scrollbar {
+    width: 9px;
+    height: 9px;
+  }
+  *::-webkit-scrollbar-thumb {
+    background: color-mix(in oklch, var(--color-foreground) 20%, transparent);
+    border-radius: 999px;
+    border: 2px solid transparent;
+    background-clip: padding-box;
+  }
+  *::-webkit-scrollbar-thumb:hover {
+    background: color-mix(in oklch, var(--color-foreground) 34%, transparent);
+    background-clip: padding-box;
+  }
+}
+
+@layer utilities {
+  .tabular {
+    font-variant-numeric: tabular-nums;
+    font-feature-settings:
+      "tnum" 1,
+      "ss01";
+  }
+
+  /* Ambient wash behind the main workspace — a whisper, keeps the ground clean & light */
+  .app-canvas {
+    background-color: var(--color-background);
+    background-image: radial-gradient(
+      50rem 32rem at 100% -12%,
+      color-mix(in oklch, var(--color-primary) 5%, transparent),
+      transparent 62%
+    );
+    background-attachment: fixed;
+  }
+  :root:not(.dark) .app-canvas {
+    background-image: radial-gradient(
+      46rem 28rem at 100% -14%,
+      color-mix(in oklch, var(--color-primary) 3.5%, transparent),
+      transparent 60%
+    );
+  }
+
+  /* Flat elevated card — even, understated shadow. No gradient, no glow. */
+  .surface-raised {
+    background-color: var(--color-surface);
+    border: 1px solid var(--color-border);
+    box-shadow: var(--shadow-soft);
+  }
+
+  .glass {
+    background-color: color-mix(in oklch, var(--color-surface) 72%, transparent);
+    backdrop-filter: blur(16px) saturate(1.4);
+    -webkit-backdrop-filter: blur(16px) saturate(1.4);
+  }
+
+  /* Deep navy, vertical tonal gradient + one huge, barely-visible teal arc
+     bleeding in from the bottom/content-facing edge. No grids, no icons —
+     restraint is the point. */
+  .glass-sidebar {
+    background-image:
+      radial-gradient(
+        46rem 30rem at -10% 116%,
+        color-mix(in oklch, var(--color-sidebar-primary) 9%, transparent),
+        transparent 62%
+      ),
+      linear-gradient(
+        180deg,
+        color-mix(in oklch, var(--color-sidebar) 96%, black) 0%,
+        var(--color-sidebar) 45%,
+        color-mix(in oklch, var(--color-sidebar) 94%, var(--color-sidebar-primary)) 100%
+      );
+    background-repeat: no-repeat, no-repeat;
+  }
+
+  .ring-focus {
+    outline: none;
+    box-shadow:
+      0 0 0 2px var(--color-surface),
+      0 0 0 4px color-mix(in oklch, var(--color-ring) 55%, transparent);
+  }
+
+  @keyframes cf-rise {
+    from {
+      opacity: 0;
+      transform: translateY(10px);
+    }
+    to {
+      opacity: 1;
+      transform: none;
+    }
+  }
+  @keyframes cf-fade {
+    from {
+      opacity: 0;
+      transform: translateY(6px);
+    }
+    to {
+      opacity: 1;
+      transform: none;
+    }
+  }
+  @keyframes cf-scale-in {
+    from {
+      opacity: 0;
+      transform: scale(0.96);
+    }
+    to {
+      opacity: 1;
+      transform: none;
+    }
+  }
+  @keyframes cf-shimmer {
+    100% {
+      transform: translateX(100%);
+    }
+  }
+  @keyframes cf-pulse-dot {
+    0%,
+    100% {
+      opacity: 1;
+    }
+    50% {
+      opacity: 0.35;
+    }
+  }
+
+  .animate-rise {
+    animation: cf-rise 0.5s cubic-bezier(0.22, 1, 0.36, 1) both;
+  }
+  .animate-fade {
+    animation: cf-fade 0.22s ease-out both;
+  }
+  .animate-scale-in {
+    animation: cf-scale-in 0.32s cubic-bezier(0.22, 1, 0.36, 1) both;
+  }
+
+  .skeleton {
+    position: relative;
+    overflow: hidden;
+    background: var(--color-muted);
+  }
+  .skeleton::after {
+    content: "";
+    position: absolute;
+    inset: 0;
+    transform: translateX(-100%);
+    background: linear-gradient(
+      90deg,
+      transparent,
+      color-mix(in oklch, var(--color-foreground) 7%, transparent),
+      transparent
+    );
+    animation: cf-shimmer 1.6s infinite;
+  }
+
+  .live-dot {
+    animation: cf-pulse-dot 2s ease-in-out infinite;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.001ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.001ms !important;
+  }
+  .skeleton::after {
+    display: none;
+  }
+}

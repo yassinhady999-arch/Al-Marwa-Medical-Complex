@@ -1,0 +1,15 @@
+REVOKE EXECUTE ON FUNCTION public.appointments_after_change() FROM PUBLIC;
+REVOKE EXECUTE ON FUNCTION public.handle_new_user() FROM PUBLIC;
+REVOKE EXECUTE ON FUNCTION public.messages_touch_conversation() FROM PUBLIC;
+REVOKE EXECUTE ON FUNCTION public.patients_after_insert() FROM PUBLIC;
+REVOKE EXECUTE ON FUNCTION public.emit_event(text, text, uuid, jsonb) FROM PUBLIC;
+REVOKE EXECUTE ON FUNCTION public.has_role(uuid, public.app_role) FROM PUBLIC;
+REVOKE EXECUTE ON FUNCTION public.is_admin() FROM PUBLIC;
+REVOKE EXECUTE ON FUNCTION public.can_write() FROM PUBLIC;
+REVOKE EXECUTE ON FUNCTION public.get_available_slots(uuid, date, integer) FROM PUBLIC;
+GRANT EXECUTE ON FUNCTION public.has_role(uuid, public.app_role) TO authenticated;
+GRANT EXECUTE ON FUNCTION public.is_admin() TO authenticated;
+GRANT EXECUTE ON FUNCTION public.can_write() TO authenticated;
+GRANT EXECUTE ON FUNCTION public.get_available_slots(uuid, date, integer) TO authenticated;
+GRANT EXECUTE ON FUNCTION public.get_available_slots(uuid, date, integer) TO service_role;
+GRANT EXECUTE ON FUNCTION public.emit_event(text, text, uuid, jsonb) TO service_role;
