@@ -13,6 +13,8 @@ export const SECTIONS = [
   { key: "services", label: "الخدمات" },
   { key: "analytics", label: "التقارير" },
   { key: "automation", label: "الأتمتة والتكامل" },
+  { key: "chatbot_training", label: "تدريب الشات بوت" },
+  { key: "ai_assistant", label: "المساعد الذكي" },
   { key: "staff", label: "الموظفون" },
   { key: "activity", label: "سجل النشاط" },
   { key: "settings", label: "الإعدادات" },

@@ -11,6 +11,8 @@ import {
   Sparkles,
   BarChart3,
   Workflow,
+  Bot,
+  BrainCircuit,
   Settings,
   UserCog,
   History,
@@ -50,6 +52,13 @@ const NAV: { to: string; label: string; icon: typeof LayoutDashboard; section: S
   { to: "/services", label: "الخدمات", icon: Sparkles, section: "services" },
   { to: "/analytics", label: "التقارير", icon: BarChart3, section: "analytics" },
   { to: "/automation", label: "الأتمتة والتكامل", icon: Workflow, section: "automation" },
+  {
+    to: "/chatbot-training",
+    label: "تدريب الشات بوت",
+    icon: Bot,
+    section: "chatbot_training",
+  },
+  { to: "/ai-assistant", label: "المساعد الذكي", icon: BrainCircuit, section: "ai_assistant" },
   { to: "/staff", label: "الموظفون", icon: UserCog, section: "staff" },
   { to: "/activity", label: "سجل النشاط", icon: History, section: "activity" },
   { to: "/settings", label: "الإعدادات", icon: Settings, section: "settings" },
@@ -61,7 +70,10 @@ const GROUPS: { label: string; sections: SectionKey[] }[] = [
     sections: ["dashboard", "appointments", "calendar", "patients", "conversations", "handoff"],
   },
   { label: "الكوادر والخدمات", sections: ["doctors", "specialties", "services"] },
-  { label: "التحليل والربط", sections: ["analytics", "automation"] },
+  {
+    label: "التحليل والربط",
+    sections: ["analytics", "automation", "chatbot_training", "ai_assistant"],
+  },
   { label: "الإدارة", sections: ["staff", "activity", "settings"] },
 ];
 

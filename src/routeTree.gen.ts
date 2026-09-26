@@ -14,10 +14,12 @@ import { Route as AuthenticatedRouteRouteImport } from './routes/_authenticated/
 import { Route as AuthRouteImport } from './routes/auth'
 import { Route as ResetPasswordRouteImport } from './routes/reset-password'
 import { Route as AuthenticatedActivityRouteImport } from './routes/_authenticated/activity'
+import { Route as AuthenticatedAiAssistantRouteImport } from './routes/_authenticated/ai-assistant'
 import { Route as AuthenticatedAnalyticsRouteImport } from './routes/_authenticated/analytics'
 import { Route as AuthenticatedAppointmentsRouteImport } from './routes/_authenticated/appointments'
 import { Route as AuthenticatedAutomationRouteImport } from './routes/_authenticated/automation'
 import { Route as AuthenticatedCalendarRouteImport } from './routes/_authenticated/calendar'
+import { Route as AuthenticatedChatbotTrainingRouteImport } from './routes/_authenticated/chatbot-training'
 import { Route as AuthenticatedConversationsRouteImport } from './routes/_authenticated/conversations'
 import { Route as AuthenticatedDashboardRouteImport } from './routes/_authenticated/dashboard'
 import { Route as AuthenticatedDoctorsRouteImport } from './routes/_authenticated/doctors'
@@ -27,6 +29,7 @@ import { Route as AuthenticatedServicesRouteImport } from './routes/_authenticat
 import { Route as AuthenticatedSettingsRouteImport } from './routes/_authenticated/settings'
 import { Route as AuthenticatedSpecialtiesRouteImport } from './routes/_authenticated/specialties'
 import { Route as AuthenticatedStaffRouteImport } from './routes/_authenticated/staff'
+import { Route as ApiAssistantChatRouteImport } from './routes/api/assistant/chat'
 import { Route as ApiPublicIntegrationsN8nAppointmentsRouteImport } from './routes/api/public/integrations/n8n/appointments'
 import { Route as ApiPublicIntegrationsN8nAvailabilityRouteImport } from './routes/api/public/integrations/n8n/availability'
 import { Route as ApiPublicIntegrationsN8nEventsRouteImport } from './routes/api/public/integrations/n8n/events'
@@ -57,6 +60,12 @@ const AuthenticatedActivityRoute = AuthenticatedActivityRouteImport.update({
   path: '/activity',
   getParentRoute: () => AuthenticatedRouteRoute,
 } as any)
+const AuthenticatedAiAssistantRoute =
+  AuthenticatedAiAssistantRouteImport.update({
+    id: '/ai-assistant',
+    path: '/ai-assistant',
+    getParentRoute: () => AuthenticatedRouteRoute,
+  } as any)
 const AuthenticatedAnalyticsRoute = AuthenticatedAnalyticsRouteImport.update({
   id: '/analytics',
   path: '/analytics',
@@ -78,6 +87,12 @@ const AuthenticatedCalendarRoute = AuthenticatedCalendarRouteImport.update({
   path: '/calendar',
   getParentRoute: () => AuthenticatedRouteRoute,
 } as any)
+const AuthenticatedChatbotTrainingRoute =
+  AuthenticatedChatbotTrainingRouteImport.update({
+    id: '/chatbot-training',
+    path: '/chatbot-training',
+    getParentRoute: () => AuthenticatedRouteRoute,
+  } as any)
 const AuthenticatedConversationsRoute =
   AuthenticatedConversationsRouteImport.update({
     id: '/conversations',
@@ -125,6 +140,11 @@ const AuthenticatedStaffRoute = AuthenticatedStaffRouteImport.update({
   path: '/staff',
   getParentRoute: () => AuthenticatedRouteRoute,
 } as any)
+const ApiAssistantChatRoute = ApiAssistantChatRouteImport.update({
+  id: '/api/assistant/chat',
+  path: '/api/assistant/chat',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const ApiPublicIntegrationsN8nAppointmentsRoute =
   ApiPublicIntegrationsN8nAppointmentsRouteImport.update({
     id: '/api/public/integrations/n8n/appointments',
@@ -161,10 +181,12 @@ export interface FileRoutesByFullPath {
   '/auth': typeof AuthRoute
   '/reset-password': typeof ResetPasswordRoute
   '/activity': typeof AuthenticatedActivityRoute
+  '/ai-assistant': typeof AuthenticatedAiAssistantRoute
   '/analytics': typeof AuthenticatedAnalyticsRoute
   '/appointments': typeof AuthenticatedAppointmentsRoute
   '/automation': typeof AuthenticatedAutomationRoute
   '/calendar': typeof AuthenticatedCalendarRoute
+  '/chatbot-training': typeof AuthenticatedChatbotTrainingRoute
   '/conversations': typeof AuthenticatedConversationsRoute
   '/dashboard': typeof AuthenticatedDashboardRoute
   '/doctors': typeof AuthenticatedDoctorsRoute
@@ -174,6 +196,7 @@ export interface FileRoutesByFullPath {
   '/settings': typeof AuthenticatedSettingsRoute
   '/specialties': typeof AuthenticatedSpecialtiesRoute
   '/staff': typeof AuthenticatedStaffRoute
+  '/api/assistant/chat': typeof ApiAssistantChatRoute
   '/api/public/integrations/n8n/appointments': typeof ApiPublicIntegrationsN8nAppointmentsRoute
   '/api/public/integrations/n8n/availability': typeof ApiPublicIntegrationsN8nAvailabilityRoute
   '/api/public/integrations/n8n/events': typeof ApiPublicIntegrationsN8nEventsRoute
@@ -185,10 +208,12 @@ export interface FileRoutesByTo {
   '/auth': typeof AuthRoute
   '/reset-password': typeof ResetPasswordRoute
   '/activity': typeof AuthenticatedActivityRoute
+  '/ai-assistant': typeof AuthenticatedAiAssistantRoute
   '/analytics': typeof AuthenticatedAnalyticsRoute
   '/appointments': typeof AuthenticatedAppointmentsRoute
   '/automation': typeof AuthenticatedAutomationRoute
   '/calendar': typeof AuthenticatedCalendarRoute
+  '/chatbot-training': typeof AuthenticatedChatbotTrainingRoute
   '/conversations': typeof AuthenticatedConversationsRoute
   '/dashboard': typeof AuthenticatedDashboardRoute
   '/doctors': typeof AuthenticatedDoctorsRoute
@@ -198,6 +223,7 @@ export interface FileRoutesByTo {
   '/settings': typeof AuthenticatedSettingsRoute
   '/specialties': typeof AuthenticatedSpecialtiesRoute
   '/staff': typeof AuthenticatedStaffRoute
+  '/api/assistant/chat': typeof ApiAssistantChatRoute
   '/api/public/integrations/n8n/appointments': typeof ApiPublicIntegrationsN8nAppointmentsRoute
   '/api/public/integrations/n8n/availability': typeof ApiPublicIntegrationsN8nAvailabilityRoute
   '/api/public/integrations/n8n/events': typeof ApiPublicIntegrationsN8nEventsRoute
@@ -211,10 +237,12 @@ export interface FileRoutesById {
   '/auth': typeof AuthRoute
   '/reset-password': typeof ResetPasswordRoute
   '/_authenticated/activity': typeof AuthenticatedActivityRoute
+  '/_authenticated/ai-assistant': typeof AuthenticatedAiAssistantRoute
   '/_authenticated/analytics': typeof AuthenticatedAnalyticsRoute
   '/_authenticated/appointments': typeof AuthenticatedAppointmentsRoute
   '/_authenticated/automation': typeof AuthenticatedAutomationRoute
   '/_authenticated/calendar': typeof AuthenticatedCalendarRoute
+  '/_authenticated/chatbot-training': typeof AuthenticatedChatbotTrainingRoute
   '/_authenticated/conversations': typeof AuthenticatedConversationsRoute
   '/_authenticated/dashboard': typeof AuthenticatedDashboardRoute
   '/_authenticated/doctors': typeof AuthenticatedDoctorsRoute
@@ -224,6 +252,7 @@ export interface FileRoutesById {
   '/_authenticated/settings': typeof AuthenticatedSettingsRoute
   '/_authenticated/specialties': typeof AuthenticatedSpecialtiesRoute
   '/_authenticated/staff': typeof AuthenticatedStaffRoute
+  '/api/assistant/chat': typeof ApiAssistantChatRoute
   '/api/public/integrations/n8n/appointments': typeof ApiPublicIntegrationsN8nAppointmentsRoute
   '/api/public/integrations/n8n/availability': typeof ApiPublicIntegrationsN8nAvailabilityRoute
   '/api/public/integrations/n8n/events': typeof ApiPublicIntegrationsN8nEventsRoute
@@ -237,10 +266,12 @@ export interface FileRouteTypes {
     | '/auth'
     | '/reset-password'
     | '/activity'
+    | '/ai-assistant'
     | '/analytics'
     | '/appointments'
     | '/automation'
     | '/calendar'
+    | '/chatbot-training'
     | '/conversations'
     | '/dashboard'
     | '/doctors'
@@ -250,6 +281,7 @@ export interface FileRouteTypes {
     | '/settings'
     | '/specialties'
     | '/staff'
+    | '/api/assistant/chat'
     | '/api/public/integrations/n8n/appointments'
     | '/api/public/integrations/n8n/availability'
     | '/api/public/integrations/n8n/events'
@@ -261,10 +293,12 @@ export interface FileRouteTypes {
     | '/auth'
     | '/reset-password'
     | '/activity'
+    | '/ai-assistant'
     | '/analytics'
     | '/appointments'
     | '/automation'
     | '/calendar'
+    | '/chatbot-training'
     | '/conversations'
     | '/dashboard'
     | '/doctors'
@@ -274,6 +308,7 @@ export interface FileRouteTypes {
     | '/settings'
     | '/specialties'
     | '/staff'
+    | '/api/assistant/chat'
     | '/api/public/integrations/n8n/appointments'
     | '/api/public/integrations/n8n/availability'
     | '/api/public/integrations/n8n/events'
@@ -286,10 +321,12 @@ export interface FileRouteTypes {
     | '/auth'
     | '/reset-password'
     | '/_authenticated/activity'
+    | '/_authenticated/ai-assistant'
     | '/_authenticated/analytics'
     | '/_authenticated/appointments'
     | '/_authenticated/automation'
     | '/_authenticated/calendar'
+    | '/_authenticated/chatbot-training'
     | '/_authenticated/conversations'
     | '/_authenticated/dashboard'
     | '/_authenticated/doctors'
@@ -299,6 +336,7 @@ export interface FileRouteTypes {
     | '/_authenticated/settings'
     | '/_authenticated/specialties'
     | '/_authenticated/staff'
+    | '/api/assistant/chat'
     | '/api/public/integrations/n8n/appointments'
     | '/api/public/integrations/n8n/availability'
     | '/api/public/integrations/n8n/events'
@@ -311,6 +349,7 @@ export interface RootRouteChildren {
   AuthenticatedRouteRoute: typeof AuthenticatedRouteRouteWithChildren
   AuthRoute: typeof AuthRoute
   ResetPasswordRoute: typeof ResetPasswordRoute
+  ApiAssistantChatRoute: typeof ApiAssistantChatRoute
   ApiPublicIntegrationsN8nAppointmentsRoute: typeof ApiPublicIntegrationsN8nAppointmentsRoute
   ApiPublicIntegrationsN8nAvailabilityRoute: typeof ApiPublicIntegrationsN8nAvailabilityRoute
   ApiPublicIntegrationsN8nEventsRoute: typeof ApiPublicIntegrationsN8nEventsRoute
@@ -355,6 +394,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthenticatedActivityRouteImport
       parentRoute: typeof AuthenticatedRouteRoute
     }
+    '/_authenticated/ai-assistant': {
+      id: '/_authenticated/ai-assistant'
+      path: '/ai-assistant'
+      fullPath: '/ai-assistant'
+      preLoaderRoute: typeof AuthenticatedAiAssistantRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
+    }
     '/_authenticated/analytics': {
       id: '/_authenticated/analytics'
       path: '/analytics'
@@ -381,6 +427,13 @@ declare module '@tanstack/react-router' {
       path: '/calendar'
       fullPath: '/calendar'
       preLoaderRoute: typeof AuthenticatedCalendarRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
+    }
+    '/_authenticated/chatbot-training': {
+      id: '/_authenticated/chatbot-training'
+      path: '/chatbot-training'
+      fullPath: '/chatbot-training'
+      preLoaderRoute: typeof AuthenticatedChatbotTrainingRouteImport
       parentRoute: typeof AuthenticatedRouteRoute
     }
     '/_authenticated/conversations': {
@@ -446,6 +499,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthenticatedStaffRouteImport
       parentRoute: typeof AuthenticatedRouteRoute
     }
+    '/api/assistant/chat': {
+      id: '/api/assistant/chat'
+      path: '/api/assistant/chat'
+      fullPath: '/api/assistant/chat'
+      preLoaderRoute: typeof ApiAssistantChatRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/api/public/integrations/n8n/appointments': {
       id: '/api/public/integrations/n8n/appointments'
       path: '/api/public/integrations/n8n/appointments'
@@ -486,10 +546,12 @@ declare module '@tanstack/react-router' {
 
 interface AuthenticatedRouteRouteChildren {
   AuthenticatedActivityRoute: typeof AuthenticatedActivityRoute
+  AuthenticatedAiAssistantRoute: typeof AuthenticatedAiAssistantRoute
   AuthenticatedAnalyticsRoute: typeof AuthenticatedAnalyticsRoute
   AuthenticatedAppointmentsRoute: typeof AuthenticatedAppointmentsRoute
   AuthenticatedAutomationRoute: typeof AuthenticatedAutomationRoute
   AuthenticatedCalendarRoute: typeof AuthenticatedCalendarRoute
+  AuthenticatedChatbotTrainingRoute: typeof AuthenticatedChatbotTrainingRoute
   AuthenticatedConversationsRoute: typeof AuthenticatedConversationsRoute
   AuthenticatedDashboardRoute: typeof AuthenticatedDashboardRoute
   AuthenticatedDoctorsRoute: typeof AuthenticatedDoctorsRoute
@@ -503,10 +565,12 @@ interface AuthenticatedRouteRouteChildren {
 
 const AuthenticatedRouteRouteChildren: AuthenticatedRouteRouteChildren = {
   AuthenticatedActivityRoute: AuthenticatedActivityRoute,
+  AuthenticatedAiAssistantRoute: AuthenticatedAiAssistantRoute,
   AuthenticatedAnalyticsRoute: AuthenticatedAnalyticsRoute,
   AuthenticatedAppointmentsRoute: AuthenticatedAppointmentsRoute,
   AuthenticatedAutomationRoute: AuthenticatedAutomationRoute,
   AuthenticatedCalendarRoute: AuthenticatedCalendarRoute,
+  AuthenticatedChatbotTrainingRoute: AuthenticatedChatbotTrainingRoute,
   AuthenticatedConversationsRoute: AuthenticatedConversationsRoute,
   AuthenticatedDashboardRoute: AuthenticatedDashboardRoute,
   AuthenticatedDoctorsRoute: AuthenticatedDoctorsRoute,
@@ -526,6 +590,7 @@ const rootRouteChildren: RootRouteChildren = {
   AuthenticatedRouteRoute: AuthenticatedRouteRouteWithChildren,
   AuthRoute: AuthRoute,
   ResetPasswordRoute: ResetPasswordRoute,
+  ApiAssistantChatRoute: ApiAssistantChatRoute,
   ApiPublicIntegrationsN8nAppointmentsRoute:
     ApiPublicIntegrationsN8nAppointmentsRoute,
   ApiPublicIntegrationsN8nAvailabilityRoute:
