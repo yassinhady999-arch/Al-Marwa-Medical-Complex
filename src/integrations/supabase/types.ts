@@ -280,6 +280,228 @@ export type Database = {
           },
         ];
       };
+      booking_form_submissions: {
+        Row: {
+          answers: Json;
+          appointment_id: string | null;
+          created_at: string;
+          form_id: string | null;
+          form_title: string;
+          id: string;
+          patient_id: string | null;
+        };
+        Insert: {
+          answers?: Json;
+          appointment_id?: string | null;
+          created_at?: string;
+          form_id?: string | null;
+          form_title?: string;
+          id?: string;
+          patient_id?: string | null;
+        };
+        Update: {
+          answers?: Json;
+          appointment_id?: string | null;
+          created_at?: string;
+          form_id?: string | null;
+          form_title?: string;
+          id?: string;
+          patient_id?: string | null;
+        };
+        Relationships: [
+          {
+            foreignKeyName: "booking_form_submissions_appointment_id_fkey";
+            columns: ["appointment_id"];
+            isOneToOne: false;
+            referencedRelation: "appointments";
+            referencedColumns: ["id"];
+          },
+          {
+            foreignKeyName: "booking_form_submissions_form_id_fkey";
+            columns: ["form_id"];
+            isOneToOne: false;
+            referencedRelation: "booking_forms";
+            referencedColumns: ["id"];
+          },
+          {
+            foreignKeyName: "booking_form_submissions_patient_id_fkey";
+            columns: ["patient_id"];
+            isOneToOne: false;
+            referencedRelation: "patients";
+            referencedColumns: ["id"];
+          },
+        ];
+      };
+      booking_forms: {
+        Row: {
+          created_at: string;
+          created_by: string | null;
+          description: string | null;
+          fields: Json;
+          id: string;
+          is_active: boolean;
+          settings: Json;
+          slug: string;
+          title: string;
+          updated_at: string;
+        };
+        Insert: {
+          created_at?: string;
+          created_by?: string | null;
+          description?: string | null;
+          fields?: Json;
+          id?: string;
+          is_active?: boolean;
+          settings?: Json;
+          slug?: string;
+          title: string;
+          updated_at?: string;
+        };
+        Update: {
+          created_at?: string;
+          created_by?: string | null;
+          description?: string | null;
+          fields?: Json;
+          id?: string;
+          is_active?: boolean;
+          settings?: Json;
+          slug?: string;
+          title?: string;
+          updated_at?: string;
+        };
+        Relationships: [];
+      };
+      chatbot_knowledge: {
+        Row: {
+          answer: string;
+          category: string;
+          created_at: string;
+          id: string;
+          is_active: boolean;
+          question: string;
+          updated_at: string;
+        };
+        Insert: {
+          answer: string;
+          category?: string;
+          created_at?: string;
+          id?: string;
+          is_active?: boolean;
+          question: string;
+          updated_at?: string;
+        };
+        Update: {
+          answer?: string;
+          category?: string;
+          created_at?: string;
+          id?: string;
+          is_active?: boolean;
+          question?: string;
+          updated_at?: string;
+        };
+        Relationships: [];
+      };
+      chatbot_logs: {
+        Row: {
+          answer: string | null;
+          created_at: string;
+          id: string;
+          question: string;
+          session_id: string;
+          source: string;
+        };
+        Insert: {
+          answer?: string | null;
+          created_at?: string;
+          id?: string;
+          question: string;
+          session_id?: string;
+          source?: string;
+        };
+        Update: {
+          answer?: string | null;
+          created_at?: string;
+          id?: string;
+          question?: string;
+          session_id?: string;
+          source?: string;
+        };
+        Relationships: [];
+      };
+      chatbot_settings: {
+        Row: {
+          ai_daily_limit: number;
+          ai_instructions: string;
+          ai_model: string;
+          booking_form_id: string | null;
+          bot_name: string;
+          created_at: string;
+          fallback_message: string;
+          id: string;
+          is_active: boolean;
+          menu: Json;
+          mode: string;
+          slug: string;
+          updated_at: string;
+          welcome_message: string;
+        };
+        Insert: {
+          ai_daily_limit?: number;
+          ai_instructions?: string;
+          ai_model?: string;
+          booking_form_id?: string | null;
+          bot_name?: string;
+          created_at?: string;
+          fallback_message?: string;
+          id?: string;
+          is_active?: boolean;
+          menu?: Json;
+          mode?: string;
+          slug?: string;
+          updated_at?: string;
+          welcome_message?: string;
+        };
+        Update: {
+          ai_daily_limit?: number;
+          ai_instructions?: string;
+          ai_model?: string;
+          booking_form_id?: string | null;
+          bot_name?: string;
+          created_at?: string;
+          fallback_message?: string;
+          id?: string;
+          is_active?: boolean;
+          menu?: Json;
+          mode?: string;
+          slug?: string;
+          updated_at?: string;
+          welcome_message?: string;
+        };
+        Relationships: [
+          {
+            foreignKeyName: "chatbot_settings_booking_form_id_fkey";
+            columns: ["booking_form_id"];
+            isOneToOne: false;
+            referencedRelation: "booking_forms";
+            referencedColumns: ["id"];
+          },
+        ];
+      };
+      chatbot_usage: {
+        Row: {
+          ai_requests: number;
+          day: string;
+        };
+        Insert: {
+          ai_requests?: number;
+          day: string;
+        };
+        Update: {
+          ai_requests?: number;
+          day?: string;
+        };
+        Relationships: [];
+      };
       clinic_settings: {
         Row: {
           address: string | null;
@@ -833,10 +1055,50 @@ export type Database = {
       };
     };
     Views: {
-      [_ in never]: never;
+      booking_form_stats: {
+        Row: {
+          form_id: string | null;
+          last_submission_at: string | null;
+          submissions: number | null;
+        };
+        Relationships: [
+          {
+            foreignKeyName: "booking_form_submissions_form_id_fkey";
+            columns: ["form_id"];
+            isOneToOne: false;
+            referencedRelation: "booking_forms";
+            referencedColumns: ["id"];
+          },
+        ];
+      };
     };
     Functions: {
+      booking_form_allows_service: {
+        Args: { _service: string; _settings: Json; _specialty: string };
+        Returns: boolean;
+      };
+      booking_form_allows_specialty: {
+        Args: { _settings: Json; _specialty: string };
+        Returns: boolean;
+      };
+      booking_form_confirmation: {
+        Args: { _appointment_id: string; _duplicate: boolean; _message: string };
+        Returns: Json;
+      };
+      booking_form_doctor_ids: {
+        Args: { _doctor: string; _settings: Json; _specialty: string };
+        Returns: string[];
+      };
+      booking_form_id_list: { Args: { _key: string; _settings: Json }; Returns: Json };
+      booking_form_window: { Args: { _settings: Json }; Returns: number };
       can_write: { Args: never; Returns: boolean };
+      consume_chatbot_ai_quota: { Args: { _slug: string }; Returns: Json };
+      get_public_booking_availability: {
+        Args: { _doctor_id?: string; _service_id?: string; _slug: string; _specialty_id?: string };
+        Returns: { day: string; slot_time: string }[];
+      };
+      get_public_booking_form: { Args: { _slug: string }; Returns: Json };
+      get_public_chatbot: { Args: { _slug: string }; Returns: Json };
       claim_conversation: { Args: { _conversation_id: string }; Returns: undefined };
       log_activity: {
         Args: {
@@ -873,6 +1135,16 @@ export type Database = {
       };
       handoff_event_payload: { Args: { _conversation_id: string }; Returns: Json };
       is_admin: { Args: never; Returns: boolean };
+      log_chatbot_exchange: {
+        Args: {
+          _answer: string;
+          _question: string;
+          _session: string;
+          _slug: string;
+          _source: string;
+        };
+        Returns: undefined;
+      };
       normalize_sa_phone: { Args: { p: string }; Returns: string };
       release_to_bot: { Args: { _conversation_id: string }; Returns: boolean };
       request_human_handoff: {
@@ -883,6 +1155,7 @@ export type Database = {
         Args: { _content: string; _conversation_id: string };
         Returns: string;
       };
+      submit_public_booking: { Args: { _payload: Json; _slug: string }; Returns: Json };
     };
     Enums: {
       app_role: "owner" | "admin" | "receptionist" | "doctor" | "viewer";

@@ -484,6 +484,41 @@
   .live-dot {
     animation: cf-pulse-dot 2s ease-in-out infinite;
   }
+
+  /* Thin bar along the header's bottom edge while the next section loads. The
+     delay keeps it hidden for navigations that finish almost at once. */
+  @keyframes cf-appear {
+    from {
+      opacity: 0;
+    }
+  }
+  @keyframes cf-progress {
+    from {
+      transform: translateX(100%);
+    }
+    to {
+      transform: translateX(-250%);
+    }
+  }
+  .nav-progress {
+    position: absolute;
+    inset-inline: 0;
+    bottom: -1px;
+    height: 2px;
+    overflow: hidden;
+    pointer-events: none;
+    animation: cf-appear 0.2s 0.15s both;
+  }
+  .nav-progress::after {
+    content: "";
+    position: absolute;
+    inset-block: 0;
+    inset-inline-start: 0;
+    width: 40%;
+    border-radius: 9999px;
+    background: var(--color-primary);
+    animation: cf-progress 1.1s ease-in-out infinite;
+  }
 }
 
 @media (prefers-reduced-motion: reduce) {

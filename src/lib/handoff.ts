@@ -67,8 +67,8 @@ export function useHandoffWaitingCount(enabled: boolean): number {
 
   useEffect(() => {
     if (!enabled) return;
-    // Unique topic per mount: AppShell remounts on every navigation, and reusing a
-    // topic would hand back the previous page's channel while it is still closing.
+    // Unique topic per mount: reusing a topic would hand back the previous mount's
+    // channel while it is still closing (StrictMode and hot reload remount this).
     const channel = supabase
       .channel(`handoff-badge-${Math.random().toString(36).slice(2)}`)
       .on("postgres_changes", { event: "*", schema: "public", table: "conversations" }, () => {

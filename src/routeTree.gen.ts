@@ -29,7 +29,12 @@ import { Route as AuthenticatedServicesRouteImport } from './routes/_authenticat
 import { Route as AuthenticatedSettingsRouteImport } from './routes/_authenticated/settings'
 import { Route as AuthenticatedSpecialtiesRouteImport } from './routes/_authenticated/specialties'
 import { Route as AuthenticatedStaffRouteImport } from './routes/_authenticated/staff'
+import { Route as BookSlugRouteImport } from './routes/book.$slug'
+import { Route as ChatSlugRouteImport } from './routes/chat.$slug'
+import { Route as AuthenticatedFormsIndexRouteImport } from './routes/_authenticated/forms.index'
+import { Route as AuthenticatedFormsFormIdRouteImport } from './routes/_authenticated/forms.$formId'
 import { Route as ApiAssistantChatRouteImport } from './routes/api/assistant/chat'
+import { Route as ApiPublicChatbotRouteImport } from './routes/api/public/chatbot'
 import { Route as ApiPublicIntegrationsN8nAppointmentsRouteImport } from './routes/api/public/integrations/n8n/appointments'
 import { Route as ApiPublicIntegrationsN8nAvailabilityRouteImport } from './routes/api/public/integrations/n8n/availability'
 import { Route as ApiPublicIntegrationsN8nEventsRouteImport } from './routes/api/public/integrations/n8n/events'
@@ -140,9 +145,35 @@ const AuthenticatedStaffRoute = AuthenticatedStaffRouteImport.update({
   path: '/staff',
   getParentRoute: () => AuthenticatedRouteRoute,
 } as any)
+const BookSlugRoute = BookSlugRouteImport.update({
+  id: '/book/$slug',
+  path: '/book/$slug',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ChatSlugRoute = ChatSlugRouteImport.update({
+  id: '/chat/$slug',
+  path: '/chat/$slug',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const AuthenticatedFormsIndexRoute = AuthenticatedFormsIndexRouteImport.update({
+  id: '/forms/',
+  path: '/forms/',
+  getParentRoute: () => AuthenticatedRouteRoute,
+} as any)
+const AuthenticatedFormsFormIdRoute =
+  AuthenticatedFormsFormIdRouteImport.update({
+    id: '/forms/$formId',
+    path: '/forms/$formId',
+    getParentRoute: () => AuthenticatedRouteRoute,
+  } as any)
 const ApiAssistantChatRoute = ApiAssistantChatRouteImport.update({
   id: '/api/assistant/chat',
   path: '/api/assistant/chat',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ApiPublicChatbotRoute = ApiPublicChatbotRouteImport.update({
+  id: '/api/public/chatbot',
+  path: '/api/public/chatbot',
   getParentRoute: () => rootRouteImport,
 } as any)
 const ApiPublicIntegrationsN8nAppointmentsRoute =
@@ -196,7 +227,12 @@ export interface FileRoutesByFullPath {
   '/settings': typeof AuthenticatedSettingsRoute
   '/specialties': typeof AuthenticatedSpecialtiesRoute
   '/staff': typeof AuthenticatedStaffRoute
+  '/book/$slug': typeof BookSlugRoute
+  '/chat/$slug': typeof ChatSlugRoute
+  '/forms/$formId': typeof AuthenticatedFormsFormIdRoute
   '/api/assistant/chat': typeof ApiAssistantChatRoute
+  '/api/public/chatbot': typeof ApiPublicChatbotRoute
+  '/forms/': typeof AuthenticatedFormsIndexRoute
   '/api/public/integrations/n8n/appointments': typeof ApiPublicIntegrationsN8nAppointmentsRoute
   '/api/public/integrations/n8n/availability': typeof ApiPublicIntegrationsN8nAvailabilityRoute
   '/api/public/integrations/n8n/events': typeof ApiPublicIntegrationsN8nEventsRoute
@@ -223,7 +259,12 @@ export interface FileRoutesByTo {
   '/settings': typeof AuthenticatedSettingsRoute
   '/specialties': typeof AuthenticatedSpecialtiesRoute
   '/staff': typeof AuthenticatedStaffRoute
+  '/book/$slug': typeof BookSlugRoute
+  '/chat/$slug': typeof ChatSlugRoute
+  '/forms/$formId': typeof AuthenticatedFormsFormIdRoute
   '/api/assistant/chat': typeof ApiAssistantChatRoute
+  '/api/public/chatbot': typeof ApiPublicChatbotRoute
+  '/forms': typeof AuthenticatedFormsIndexRoute
   '/api/public/integrations/n8n/appointments': typeof ApiPublicIntegrationsN8nAppointmentsRoute
   '/api/public/integrations/n8n/availability': typeof ApiPublicIntegrationsN8nAvailabilityRoute
   '/api/public/integrations/n8n/events': typeof ApiPublicIntegrationsN8nEventsRoute
@@ -252,7 +293,12 @@ export interface FileRoutesById {
   '/_authenticated/settings': typeof AuthenticatedSettingsRoute
   '/_authenticated/specialties': typeof AuthenticatedSpecialtiesRoute
   '/_authenticated/staff': typeof AuthenticatedStaffRoute
+  '/book/$slug': typeof BookSlugRoute
+  '/chat/$slug': typeof ChatSlugRoute
+  '/_authenticated/forms/$formId': typeof AuthenticatedFormsFormIdRoute
   '/api/assistant/chat': typeof ApiAssistantChatRoute
+  '/api/public/chatbot': typeof ApiPublicChatbotRoute
+  '/_authenticated/forms/': typeof AuthenticatedFormsIndexRoute
   '/api/public/integrations/n8n/appointments': typeof ApiPublicIntegrationsN8nAppointmentsRoute
   '/api/public/integrations/n8n/availability': typeof ApiPublicIntegrationsN8nAvailabilityRoute
   '/api/public/integrations/n8n/events': typeof ApiPublicIntegrationsN8nEventsRoute
@@ -281,7 +327,12 @@ export interface FileRouteTypes {
     | '/settings'
     | '/specialties'
     | '/staff'
+    | '/book/$slug'
+    | '/chat/$slug'
+    | '/forms/$formId'
     | '/api/assistant/chat'
+    | '/api/public/chatbot'
+    | '/forms/'
     | '/api/public/integrations/n8n/appointments'
     | '/api/public/integrations/n8n/availability'
     | '/api/public/integrations/n8n/events'
@@ -308,7 +359,12 @@ export interface FileRouteTypes {
     | '/settings'
     | '/specialties'
     | '/staff'
+    | '/book/$slug'
+    | '/chat/$slug'
+    | '/forms/$formId'
     | '/api/assistant/chat'
+    | '/api/public/chatbot'
+    | '/forms'
     | '/api/public/integrations/n8n/appointments'
     | '/api/public/integrations/n8n/availability'
     | '/api/public/integrations/n8n/events'
@@ -336,7 +392,12 @@ export interface FileRouteTypes {
     | '/_authenticated/settings'
     | '/_authenticated/specialties'
     | '/_authenticated/staff'
+    | '/book/$slug'
+    | '/chat/$slug'
+    | '/_authenticated/forms/$formId'
     | '/api/assistant/chat'
+    | '/api/public/chatbot'
+    | '/_authenticated/forms/'
     | '/api/public/integrations/n8n/appointments'
     | '/api/public/integrations/n8n/availability'
     | '/api/public/integrations/n8n/events'
@@ -349,7 +410,10 @@ export interface RootRouteChildren {
   AuthenticatedRouteRoute: typeof AuthenticatedRouteRouteWithChildren
   AuthRoute: typeof AuthRoute
   ResetPasswordRoute: typeof ResetPasswordRoute
+  BookSlugRoute: typeof BookSlugRoute
+  ChatSlugRoute: typeof ChatSlugRoute
   ApiAssistantChatRoute: typeof ApiAssistantChatRoute
+  ApiPublicChatbotRoute: typeof ApiPublicChatbotRoute
   ApiPublicIntegrationsN8nAppointmentsRoute: typeof ApiPublicIntegrationsN8nAppointmentsRoute
   ApiPublicIntegrationsN8nAvailabilityRoute: typeof ApiPublicIntegrationsN8nAvailabilityRoute
   ApiPublicIntegrationsN8nEventsRoute: typeof ApiPublicIntegrationsN8nEventsRoute
@@ -499,11 +563,46 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthenticatedStaffRouteImport
       parentRoute: typeof AuthenticatedRouteRoute
     }
+    '/book/$slug': {
+      id: '/book/$slug'
+      path: '/book/$slug'
+      fullPath: '/book/$slug'
+      preLoaderRoute: typeof BookSlugRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/chat/$slug': {
+      id: '/chat/$slug'
+      path: '/chat/$slug'
+      fullPath: '/chat/$slug'
+      preLoaderRoute: typeof ChatSlugRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/_authenticated/forms/': {
+      id: '/_authenticated/forms/'
+      path: '/forms'
+      fullPath: '/forms/'
+      preLoaderRoute: typeof AuthenticatedFormsIndexRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
+    }
+    '/_authenticated/forms/$formId': {
+      id: '/_authenticated/forms/$formId'
+      path: '/forms/$formId'
+      fullPath: '/forms/$formId'
+      preLoaderRoute: typeof AuthenticatedFormsFormIdRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
+    }
     '/api/assistant/chat': {
       id: '/api/assistant/chat'
       path: '/api/assistant/chat'
       fullPath: '/api/assistant/chat'
       preLoaderRoute: typeof ApiAssistantChatRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/public/chatbot': {
+      id: '/api/public/chatbot'
+      path: '/api/public/chatbot'
+      fullPath: '/api/public/chatbot'
+      preLoaderRoute: typeof ApiPublicChatbotRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/api/public/integrations/n8n/appointments': {
@@ -561,6 +660,8 @@ interface AuthenticatedRouteRouteChildren {
   AuthenticatedSettingsRoute: typeof AuthenticatedSettingsRoute
   AuthenticatedSpecialtiesRoute: typeof AuthenticatedSpecialtiesRoute
   AuthenticatedStaffRoute: typeof AuthenticatedStaffRoute
+  AuthenticatedFormsFormIdRoute: typeof AuthenticatedFormsFormIdRoute
+  AuthenticatedFormsIndexRoute: typeof AuthenticatedFormsIndexRoute
 }
 
 const AuthenticatedRouteRouteChildren: AuthenticatedRouteRouteChildren = {
@@ -580,6 +681,8 @@ const AuthenticatedRouteRouteChildren: AuthenticatedRouteRouteChildren = {
   AuthenticatedSettingsRoute: AuthenticatedSettingsRoute,
   AuthenticatedSpecialtiesRoute: AuthenticatedSpecialtiesRoute,
   AuthenticatedStaffRoute: AuthenticatedStaffRoute,
+  AuthenticatedFormsFormIdRoute: AuthenticatedFormsFormIdRoute,
+  AuthenticatedFormsIndexRoute: AuthenticatedFormsIndexRoute,
 }
 
 const AuthenticatedRouteRouteWithChildren =
@@ -590,7 +693,10 @@ const rootRouteChildren: RootRouteChildren = {
   AuthenticatedRouteRoute: AuthenticatedRouteRouteWithChildren,
   AuthRoute: AuthRoute,
   ResetPasswordRoute: ResetPasswordRoute,
+  BookSlugRoute: BookSlugRoute,
+  ChatSlugRoute: ChatSlugRoute,
   ApiAssistantChatRoute: ApiAssistantChatRoute,
+  ApiPublicChatbotRoute: ApiPublicChatbotRoute,
   ApiPublicIntegrationsN8nAppointmentsRoute:
     ApiPublicIntegrationsN8nAppointmentsRoute,
   ApiPublicIntegrationsN8nAvailabilityRoute:

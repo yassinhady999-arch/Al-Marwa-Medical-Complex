@@ -7,24 +7,29 @@ import { logActivity } from "@/lib/activity";
 
 export type AppRole = "owner" | "admin" | "receptionist" | "doctor" | "viewer";
 
+// Latest session any useAuth() has seen. Components mounting later (every page
+// change) start from it instead of null, so per-user queries such as the profile
+// resolve from cache on their first render rather than after getSession().
+let lastSession: Session | null | undefined;
+
 export function useAuth() {
-  const [session, setSession] = useState<Session | null>(null);
-  const [user, setUser] = useState<User | null>(null);
-  const [loading, setLoading] = useState(true);
+  const [session, setSession] = useState<Session | null>(lastSession ?? null);
+  const [loading, setLoading] = useState(lastSession === undefined);
 
   useEffect(() => {
     const { data } = supabase.auth.onAuthStateChange((_event, s) => {
+      lastSession = s;
       setSession(s);
-      setUser(s?.user ?? null);
     });
     supabase.auth.getSession().then(({ data: { session: s } }) => {
+      lastSession = s;
       setSession(s);
-      setUser(s?.user ?? null);
       setLoading(false);
     });
     return () => data.subscription.unsubscribe();
   }, []);
 
+  const user: User | null = session?.user ?? null;
   return { session, user, loading };
 }
 
@@ -33,6 +38,9 @@ export function useProfile() {
   return useQuery({
     queryKey: ["profile", user?.id],
     enabled: !!user?.id,
+    // Read by the frame and every page; roles and permissions rarely change, and
+    // signing in again or returning to the tab refreshes them.
+    staleTime: 5 * 60_000,
     queryFn: async () => {
       const [{ data: profile }, { data: roles }, { data: perm }] = await Promise.all([
         supabase.from("profiles").select("*").eq("id", user!.id).maybeSingle(),

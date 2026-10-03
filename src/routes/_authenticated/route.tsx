@@ -1,5 +1,6 @@
 import { createFileRoute, Outlet, redirect } from "@tanstack/react-router";
 import { supabase } from "@/integrations/supabase/client";
+import { AppFrame } from "@/components/layout/AppShell";
 
 export const Route = createFileRoute("/_authenticated")({
   ssr: false,
@@ -14,5 +15,10 @@ export const Route = createFileRoute("/_authenticated")({
     return { user: data.session.user };
   },
   staleTime: 60_000,
-  component: () => <Outlet />,
+  // The sidebar and header stay mounted across sections; pages render inside.
+  component: () => (
+    <AppFrame>
+      <Outlet />
+    </AppFrame>
+  ),
 });

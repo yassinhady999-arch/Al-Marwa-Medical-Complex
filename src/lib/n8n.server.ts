@@ -1,6 +1,7 @@
 // Server-only helpers for the n8n integration endpoints.
 import type { SupabaseClient } from "@supabase/supabase-js";
 import type { Database } from "@/integrations/supabase/types";
+import { normalizeArabic } from "@/lib/arabic";
 
 export type Admin = SupabaseClient<Database>;
 
@@ -115,18 +116,6 @@ export async function requestHandoff(
   });
   if (error) throw new Error(error.message);
   return data === true;
-}
-
-/** Strips tashkeel/tatweel and unifies alef, yaa and taa-marbuta forms. */
-function normalizeArabic(text: string): string {
-  return text
-    .toLowerCase()
-    .replace(/[ً-ٰٟـ]/g, "")
-    .replace(/[أإآٱ]/g, "ا")
-    .replace(/ى/g, "ي")
-    .replace(/ة/g, "ه")
-    .replace(/\s+/g, " ")
-    .trim();
 }
 
 const HUMAN_TARGET =

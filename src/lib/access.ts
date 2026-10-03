@@ -5,6 +5,7 @@ export const SECTIONS = [
   { key: "dashboard", label: "لوحة التشغيل" },
   { key: "appointments", label: "المواعيد" },
   { key: "calendar", label: "التقويم" },
+  { key: "forms", label: "نماذج الحجز" },
   { key: "patients", label: "المرضى" },
   { key: "conversations", label: "المحادثات" },
   { key: "handoff", label: "التدخل البشري" },

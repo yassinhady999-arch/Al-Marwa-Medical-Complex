@@ -280,6 +280,15 @@ const MOCK: Record<string, unknown[]> = {
       timezone: "Asia/Riyadh",
       currency: "SAR",
       n8n_webhook_url: "https://n8n.nukhba.sa/webhook/clinic",
+      working_hours: {
+        "0": { enabled: true, start: "09:00", end: "21:00" },
+        "1": { enabled: true, start: "09:00", end: "21:00" },
+        "2": { enabled: true, start: "09:00", end: "21:00" },
+        "3": { enabled: true, start: "09:00", end: "21:00" },
+        "4": { enabled: true, start: "09:00", end: "21:00" },
+        "5": { enabled: false, start: "09:00", end: "21:00" },
+        "6": { enabled: true, start: "16:00", end: "22:00" },
+      },
     },
   ],
   profiles: [
@@ -1020,6 +1029,330 @@ const MOCK: Record<string, unknown[]> = {
       created_at: stamp(60 * 3),
     },
   ],
+  booking_forms: [
+    {
+      id: "f1",
+      slug: "dental2026ab",
+      title: "حجز كشف الأسنان",
+      description: "احجز موعدك مع أطباء الأسنان في أقل من دقيقة.",
+      is_active: true,
+      created_at: stamp(60 * 24 * 6),
+      updated_at: stamp(60 * 24 * 2),
+      fields: [
+        {
+          id: "full_name",
+          type: "full_name",
+          label: "الاسم الكامل",
+          required: true,
+          placeholder: "مثال: محمد أحمد",
+        },
+        {
+          id: "phone",
+          type: "phone",
+          label: "رقم الجوال",
+          required: true,
+          placeholder: "05xxxxxxxx",
+        },
+        { id: "appointment", type: "appointment", label: "اختيار الموعد", required: true },
+        {
+          id: "f_source",
+          type: "select",
+          label: "كيف عرفت عنا؟",
+          required: true,
+          options: ["سناب شات", "تويتر", "صديق", "بحث جوجل"],
+        },
+        { id: "email", type: "email", label: "البريد الإلكتروني", required: false },
+        {
+          id: "notes",
+          type: "notes",
+          label: "ملاحظات",
+          required: false,
+          placeholder: "أي معلومة تحب توصلها للطبيب",
+        },
+        {
+          id: "f_policy",
+          type: "checkbox",
+          label: "أوافق على سياسة الإلغاء (قبل 24 ساعة)",
+          required: true,
+        },
+      ],
+      settings: {
+        specialty_ids: ["sp1"],
+        service_ids: [],
+        choose_doctor: true,
+        booking_window_days: 14,
+        show_prices: true,
+        success_message: "تم استلام حجزك ✅ سنرسل لك تأكيد الموعد على واتساب.",
+      },
+    },
+    {
+      id: "f2",
+      slug: "general00xyz",
+      title: "حجز موعد — كل التخصصات",
+      description: null,
+      is_active: false,
+      created_at: stamp(60 * 24 * 12),
+      updated_at: stamp(60 * 24 * 12),
+      fields: [
+        { id: "full_name", type: "full_name", label: "الاسم الكامل", required: true },
+        { id: "phone", type: "phone", label: "رقم الجوال", required: true },
+        { id: "gender", type: "gender", label: "الجنس", required: false },
+        { id: "date_of_birth", type: "date_of_birth", label: "تاريخ الميلاد", required: false },
+        { id: "appointment", type: "appointment", label: "اختيار الموعد", required: true },
+      ],
+      settings: {
+        specialty_ids: [],
+        service_ids: [],
+        choose_doctor: false,
+        booking_window_days: 21,
+        show_prices: false,
+        success_message: "تم استلام حجزك بنجاح.",
+      },
+    },
+  ],
+  booking_form_submissions: [
+    {
+      id: "fs1",
+      form_id: "f1",
+      form_title: "حجز كشف الأسنان",
+      appointment_id: "a1",
+      patient_id: "p1",
+      created_at: stamp(60 * 26),
+      answers: [
+        { field_id: "full_name", label: "الاسم الكامل", type: "full_name", value: "أحمد المطيري" },
+        { field_id: "phone", label: "رقم الجوال", type: "phone", value: "0501112233" },
+        { field_id: "f_source", label: "كيف عرفت عنا؟", type: "select", value: "صديق" },
+        {
+          field_id: "f_policy",
+          label: "أوافق على سياسة الإلغاء (قبل 24 ساعة)",
+          type: "checkbox",
+          value: "true",
+        },
+      ],
+      appointments: {
+        appointment_number: "APT-26-000101",
+        appointment_date: iso(0),
+        start_time: "09:00:00",
+        status: "confirmed",
+      },
+      patients: P("أحمد المطيري", "+966501112233"),
+    },
+    {
+      id: "fs2",
+      form_id: "f1",
+      form_title: "حجز كشف الأسنان",
+      appointment_id: "a3",
+      patient_id: "p3",
+      created_at: stamp(60 * 50),
+      answers: [
+        { field_id: "full_name", label: "الاسم الكامل", type: "full_name", value: "خالد الدوسري" },
+        { field_id: "phone", label: "رقم الجوال", type: "phone", value: "0503334455" },
+        { field_id: "f_source", label: "كيف عرفت عنا؟", type: "select", value: "سناب شات" },
+        { field_id: "notes", label: "ملاحظات", type: "notes", value: "عندي حساسية من البنج" },
+        {
+          field_id: "f_policy",
+          label: "أوافق على سياسة الإلغاء (قبل 24 ساعة)",
+          type: "checkbox",
+          value: "true",
+        },
+      ],
+      appointments: {
+        appointment_number: "APT-26-000103",
+        appointment_date: iso(0),
+        start_time: "10:15:00",
+        status: "in_progress",
+      },
+      patients: P("خالد الدوسري", "+966503334455"),
+    },
+  ],
+  chatbot_settings: [
+    {
+      id: "bot1",
+      slug: "nukhbabot001",
+      bot_name: "مساعد عيادة النخبة",
+      welcome_message: "أهلًا بك في عيادة النخبة الطبية 👋 كيف أقدر أساعدك اليوم؟",
+      mode: "hybrid",
+      is_active: true,
+      fallback_message:
+        "عذرًا، لم أجد إجابة دقيقة لسؤالك. اختر من القائمة أو تواصل معنا على 0112345678.",
+      ai_model: "claude-opus-5-5",
+      ai_instructions: "نقبل تأمين بوبا والتعاونية وميدغلف. الكشف الأول للأطفال دون 3 سنوات مجاني.",
+      ai_daily_limit: 300,
+      booking_form_id: "f1",
+      created_at: stamp(60 * 24 * 7),
+      updated_at: stamp(60 * 3),
+      menu: [
+        {
+          id: "n_booking",
+          label: "📅 حجز موعد",
+          kind: "booking",
+          reply: "يسعدنا خدمتك! احجز موعدك بسهولة من الرابط التالي:",
+          children: [],
+        },
+        {
+          id: "n_services",
+          label: "💰 الخدمات والأسعار",
+          kind: "services",
+          reply: "هذه خدماتنا وأسعارها:",
+          children: [],
+        },
+        {
+          id: "n_doctors",
+          label: "👨‍⚕️ الأطباء",
+          kind: "doctors",
+          reply: "تعرّف على أطبائنا:",
+          children: [],
+        },
+        {
+          id: "n_faq",
+          label: "❓ أسئلة شائعة",
+          kind: "text",
+          reply: "اختر سؤالك:",
+          children: [
+            {
+              id: "n_ins",
+              label: "🛡️ التأمين الطبي",
+              kind: "text",
+              reply:
+                "نقبل التأمين من بوبا، التعاونية، وميدغلف. أحضر بطاقة التأمين والهوية معك يوم الزيارة.",
+              children: [],
+            },
+            {
+              id: "n_park",
+              label: "🅿️ المواقف",
+              kind: "text",
+              reply: "نعم، توجد مواقف مجانية أمام العيادة مباشرة.",
+              children: [],
+            },
+            {
+              id: "n_kids",
+              label: "👶 خدمات الأطفال",
+              kind: "text",
+              reply: "نقدم للأطفال الكشف الدوري والتطعيمات. ماذا تحتاج؟",
+              children: [
+                {
+                  id: "n_vacc",
+                  label: "💉 التطعيمات",
+                  kind: "text",
+                  reply: "نوفر جميع تطعيمات الجدول الوطني. أحضر كرت التطعيم معك.",
+                  children: [],
+                },
+                {
+                  id: "n_kids_prices",
+                  label: "💰 أسعار خدمات الأطفال",
+                  kind: "services",
+                  reply: "أسعار خدمات الأطفال:",
+                  specialty_id: "sp3",
+                  children: [],
+                },
+              ],
+            },
+          ],
+        },
+        {
+          id: "n_hours",
+          label: "🕘 مواعيد العمل",
+          kind: "hours",
+          reply: "مواعيد عمل العيادة:",
+          children: [],
+        },
+        {
+          id: "n_contact",
+          label: "📍 الموقع والتواصل",
+          kind: "contact",
+          reply: "يسعدنا تواصلك معنا:",
+          children: [],
+        },
+      ],
+    },
+  ],
+  chatbot_knowledge: [
+    {
+      id: "k1",
+      category: "عام",
+      question: "وين موقع العيادة؟",
+      answer: "نتواجد في الرياض، طريق الملك فهد، حي العليا. يسعدنا زيارتك!",
+      is_active: true,
+      created_at: stamp(60 * 24 * 5),
+    },
+    {
+      id: "k2",
+      category: "أسعار",
+      question: "كم سعر الكشف؟",
+      answer:
+        "يبدأ سعر الكشف من 100 ر.س ويختلف حسب التخصص. اختر «الخدمات والأسعار» من القائمة للتفاصيل.",
+      is_active: true,
+      created_at: stamp(60 * 24 * 5),
+    },
+    {
+      id: "k3",
+      category: "تأمين",
+      question: "هل تقبلون التأمين؟",
+      answer: "نعم، نقبل التأمين من بوبا والتعاونية وميدغلف.",
+      is_active: true,
+      created_at: stamp(60 * 24 * 4),
+    },
+    {
+      id: "k4",
+      category: "حجز",
+      question: "أبغى ألغي موعدي",
+      answer: "لا مشكلة، أرسل لنا رقم الحجز على واتساب أو اتصل بنا وسنلغيه لك.",
+      is_active: true,
+      created_at: stamp(60 * 24 * 3),
+    },
+    {
+      id: "k5",
+      category: "عام",
+      question: "هل يوجد مواقف؟",
+      answer: "نعم، توجد مواقف مجانية أمام العيادة.",
+      is_active: true,
+      created_at: stamp(60 * 24 * 2),
+    },
+    {
+      id: "k6",
+      category: "تحضير للزيارة",
+      question: "هل أحتاج أكون صايم قبل التحاليل؟",
+      answer: "بعض التحاليل تحتاج صيامًا 8 ساعات. سيوضح لك الطبيب ذلك عند الحجز.",
+      is_active: false,
+      created_at: stamp(60 * 24),
+    },
+  ],
+  chatbot_logs: [
+    {
+      id: "l1",
+      session_id: "s1",
+      question: "هل عندكم تقويم أسنان شفاف؟",
+      answer: "عذرًا، لم أجد إجابة دقيقة لسؤالك.",
+      source: "fallback",
+      created_at: stamp(35),
+    },
+    {
+      id: "l2",
+      session_id: "s2",
+      question: "بكم الكشف؟",
+      answer: "يبدأ سعر الكشف من 100 ر.س ويختلف حسب التخصص.",
+      source: "knowledge",
+      created_at: stamp(80),
+    },
+    {
+      id: "l3",
+      session_id: "s3",
+      question: "طفلي عنده حرارة من يومين، أقدر أجيبه اليوم؟",
+      answer:
+        "سلامته! نعم يمكنك حجز موعد اليوم مع طبيب الأطفال من رابط الحجز. وإن كانت الحرارة مرتفعة جدًا أو مع صعوبة تنفس فتوجه للطوارئ فورًا.",
+      source: "ai",
+      created_at: stamp(140),
+    },
+    {
+      id: "l4",
+      session_id: "s4",
+      question: "تشتغلون يوم الجمعة؟",
+      answer: "عذرًا، لم أجد إجابة دقيقة لسؤالك.",
+      source: "fallback",
+      created_at: stamp(300),
+    },
+  ],
+  chatbot_usage: [{ day: iso(0), ai_requests: 18 }],
   activity_logs: [
     {
       id: "ac1",
@@ -1101,13 +1434,54 @@ const ok = <T>(data: T, count?: number | null): Promise<Res<T>> =>
 const newId = () =>
   (typeof crypto !== "undefined" && crypto.randomUUID?.()) || `mock-${Date.now()}`;
 
-function withGeneratedFields(v: Record<string, unknown>) {
+const TABLE_DEFAULTS: Record<string, () => Record<string, unknown>> = {
+  booking_forms: () => ({
+    slug: newId().replace(/-/g, "").slice(0, 12),
+    is_active: true,
+    description: null,
+    fields: [],
+    settings: {},
+    updated_at: new Date().toISOString(),
+  }),
+  chatbot_knowledge: () => ({ category: "عام", is_active: true }),
+  chatbot_settings: () => ({
+    slug: newId().replace(/-/g, "").slice(0, 12),
+    bot_name: "المساعد الآلي",
+    welcome_message: "أهلًا بك 👋 كيف أقدر أساعدك اليوم؟",
+    mode: "hybrid",
+    is_active: true,
+    fallback_message: "عذرًا، لم أجد إجابة دقيقة لسؤالك.",
+    ai_model: "claude-opus-5-5",
+    ai_instructions: "",
+    ai_daily_limit: 300,
+    booking_form_id: null,
+    menu: [],
+  }),
+};
+/** Lists these tables feed are shown newest first. */
+const NEWEST_FIRST = new Set([
+  "booking_forms",
+  "booking_form_submissions",
+  "chatbot_knowledge",
+  "chatbot_logs",
+  "notifications",
+  "activity_logs",
+]);
+
+function withGeneratedFields(table: string, v: Record<string, unknown>) {
   return {
     id: newId(),
     appointment_number: "APT-26-" + String(Math.floor(Math.random() * 900000) + 100000),
     created_at: new Date().toISOString(),
+    ...TABLE_DEFAULTS[table]?.(),
     ...v,
   };
+}
+
+function persist(table: string, row: Record<string, unknown>) {
+  const list = (MOCK[table] ??= []);
+  if (NEWEST_FIRST.has(table)) list.unshift(row);
+  else list.push(row);
 }
 
 type Row = Record<string, unknown>;
@@ -1134,8 +1508,311 @@ function refreshAppointmentEmbeds(r: Row) {
   r["services"] = service ? { name: service["name"] } : r["service_id"] ? r["services"] : null;
 }
 
+class MockRpcError extends Error {}
+
+const rowsOf = (name: string) => (MOCK[name] ?? []) as Row[];
+const toMinutes = (t: unknown) => {
+  const [h = 0, m = 0] = String(t).split(":").map(Number);
+  return h * 60 + m;
+};
+const toTime = (min: number) =>
+  `${String(Math.floor(min / 60)).padStart(2, "0")}:${String(min % 60).padStart(2, "0")}:00`;
+
+/** Free start times for a doctor on a day, like get_available_slots. */
+function mockSlots(doctorId: unknown, day: string, duration: number): string[] {
+  const doctor = rowsOf("doctors").find((d) => d["id"] === doctorId && d["status"] === "active");
+  const dow = new Date(`${day}T00:00:00`).getDay();
+  const sch = ((doctor?.["doctor_schedules"] ?? []) as Row[]).find(
+    (x) => x["day_of_week"] === dow && x["is_active"] !== false,
+  );
+  if (!sch) return [];
+  const booked = rowsOf("appointments")
+    .filter(
+      (a) =>
+        a["doctor_id"] === doctorId &&
+        a["appointment_date"] === day &&
+        !["cancelled", "no_show", "rescheduled"].includes(String(a["status"])),
+    )
+    .map((a) => [toMinutes(a["start_time"]), toMinutes(a["end_time"])] as const);
+  const now = new Date();
+  const past = day === iso(0) ? now.getHours() * 60 + now.getMinutes() : -1;
+  const out: string[] = [];
+  for (
+    let t = toMinutes(sch["start_time"]);
+    t + duration <= toMinutes(sch["end_time"]);
+    t += duration
+  ) {
+    if (t <= past || booked.some(([s, e]) => s < t + duration && e > t)) continue;
+    out.push(toTime(t));
+  }
+  return out;
+}
+
+function formScope(form: Row) {
+  const settings = (form["settings"] ?? {}) as Row;
+  const ids = (k: string) => (Array.isArray(settings[k]) ? (settings[k] as unknown[]) : []);
+  const allowSpec = (id: unknown) =>
+    ids("specialty_ids").length === 0 || (id != null && ids("specialty_ids").includes(id));
+  const doctors = rowsOf("doctors").filter(
+    (d) => d["status"] === "active" && allowSpec(d["specialty_id"] ?? null),
+  );
+  const hasDoctor = (id: unknown) => doctors.some((d) => d["specialty_id"] === id);
+  const services = rowsOf("services").filter(
+    (v) =>
+      v["is_active"] !== false &&
+      allowSpec(v["specialty_id"] ?? null) &&
+      (ids("service_ids").length === 0 || ids("service_ids").includes(v["id"])) &&
+      (v["specialty_id"] == null || hasDoctor(v["specialty_id"])),
+  );
+  return { settings, allowSpec, doctors, hasDoctor, services };
+}
+
+function activeForm(slug: unknown) {
+  return rowsOf("booking_forms").find((f) => f["slug"] === slug && f["is_active"] === true);
+}
+
+/** Booking-form and chatbot RPCs (public pages), replayed against the in-memory tables. */
+function mockPublicRpc(fn: string, args: Row): { handled: boolean; value?: unknown } {
+  const clinic = rowsOf("clinic_settings")[0] ?? {};
+  if (fn === "get_public_booking_form") {
+    const form = activeForm(args["_slug"]);
+    if (!form) return { handled: true, value: null };
+    const { allowSpec, doctors, hasDoctor, services } = formScope(form);
+    return {
+      handled: true,
+      value: {
+        id: form["id"],
+        slug: form["slug"],
+        title: form["title"],
+        description: form["description"],
+        fields: form["fields"],
+        settings: form["settings"],
+        clinic: {
+          name: clinic["clinic_name"],
+          phone: clinic["phone"],
+          address: clinic["address"],
+          city: clinic["city"],
+          logo_url: null,
+        },
+        specialties: rowsOf("specialties")
+          .filter((s) => s["is_active"] !== false && allowSpec(s["id"]) && hasDoctor(s["id"]))
+          .map((s) => ({ id: s["id"], name: s["name"] })),
+        services: services.map((v) => ({
+          id: v["id"],
+          name: v["name"],
+          specialty_id: v["specialty_id"] ?? null,
+          duration_minutes: v["duration_minutes"],
+          price: v["price"],
+          description: v["description"] ?? null,
+        })),
+        doctors: doctors.map((d) => ({
+          id: d["id"],
+          name: d["name"],
+          specialty_id: d["specialty_id"] ?? null,
+        })),
+      },
+    };
+  }
+
+  if (fn === "get_public_booking_availability" || fn === "submit_public_booking") {
+    const form = activeForm(args["_slug"]);
+    const payload = (args["_payload"] ?? {}) as Row;
+    const source =
+      fn === "submit_public_booking"
+        ? payload
+        : {
+            service_id: args["_service_id"],
+            doctor_id: args["_doctor_id"],
+            specialty_id: args["_specialty_id"],
+          };
+    if (!form) {
+      if (fn === "get_public_booking_availability") return { handled: true, value: [] };
+      throw new MockRpcError("FORM_UNAVAILABLE: هذا النموذج غير متاح حاليًا");
+    }
+    const { settings, doctors, services } = formScope(form);
+    const service = services.find((v) => v["id"] === source["service_id"]);
+    const duration = Number(service?.["duration_minutes"] ?? 30);
+    const spec = service ? (service["specialty_id"] ?? null) : (source["specialty_id"] ?? null);
+    const chosen = settings["choose_doctor"] !== false ? (source["doctor_id"] ?? null) : null;
+    const candidates = doctors.filter(
+      (d) => (spec == null || d["specialty_id"] === spec) && (chosen == null || d["id"] === chosen),
+    );
+    const windowDays = Number(settings["booking_window_days"] ?? 21);
+
+    if (fn === "get_public_booking_availability") {
+      const rows: { day: string; slot_time: string }[] = [];
+      for (let i = 0; i < windowDays; i++) {
+        const day = iso(i);
+        const times = new Set(candidates.flatMap((d) => mockSlots(d["id"], day, duration)));
+        [...times].sort().forEach((slot_time) => rows.push({ day, slot_time }));
+      }
+      return { handled: true, value: rows };
+    }
+
+    // submit_public_booking
+    const answers = (payload["answers"] ?? {}) as Record<string, string>;
+    const key = `form:${String(payload["request_id"] ?? newId())}`;
+    const confirm = (a: Row, duplicate: boolean) => ({
+      appointment_number: a["appointment_number"],
+      date: a["appointment_date"],
+      start_time: a["start_time"],
+      end_time: a["end_time"],
+      doctor_name: (a["doctors"] as Row | null)?.["name"] ?? null,
+      service_name: (a["services"] as Row | null)?.["name"] ?? null,
+      success_message: settings["success_message"] ?? null,
+      duplicate,
+    });
+    const existing = rowsOf("appointments").find((a) => a["idempotency_key"] === key);
+    if (existing) return { handled: true, value: confirm(existing, true) };
+    for (const f of (form["fields"] ?? []) as Row[]) {
+      if (f["type"] === "appointment" || !f["required"]) continue;
+      const v = String(answers[String(f["id"])] ?? "").trim();
+      if (!v || (f["type"] === "checkbox" && v !== "true"))
+        throw new MockRpcError(`REQUIRED_FIELD: يرجى تعبئة «${String(f["label"])}»`);
+    }
+    const start = `${String(payload["time"] ?? "")}:00`;
+    const day = String(payload["date"] ?? "");
+    const doctor = candidates.find((d) => mockSlots(d["id"], day, duration).includes(start));
+    if (!doctor) throw new MockRpcError("SLOT_TAKEN: هذا الموعد لم يعد متاحًا، اختر وقتًا آخر");
+    const name = String(answers["full_name"] ?? "").trim();
+    const phone = String(answers["phone"] ?? "").trim();
+    const tail = phone.replace(/\D/g, "").slice(-9);
+    let patient = rowsOf("patients").find((x) =>
+      String(x["phone"]).replace(/\D/g, "").endsWith(tail),
+    );
+    if (!patient) {
+      patient = {
+        id: newId(),
+        full_name: name,
+        phone,
+        whatsapp_number: phone,
+        email: answers["email"] ?? null,
+        gender: answers["gender"] ?? null,
+        city: answers["city"] ?? null,
+        source: "website",
+        last_contact_at: new Date().toISOString(),
+      };
+      persist("patients", patient);
+    }
+    const appointment: Row = {
+      id: newId(),
+      appointment_number: "APT-26-" + String(Math.floor(Math.random() * 900000) + 100000),
+      appointment_date: day,
+      start_time: start,
+      end_time: toTime(toMinutes(start) + duration),
+      status: "pending",
+      source: "website",
+      price: service?.["price"] ?? 0,
+      notes: `حجز عبر نموذج «${String(form["title"])}»`,
+      idempotency_key: key,
+      patient_id: patient["id"],
+      doctor_id: doctor["id"],
+      service_id: service?.["id"] ?? null,
+      specialty_id: spec ?? doctor["specialty_id"] ?? null,
+      patients: P(String(patient["full_name"]), String(patient["phone"])),
+      doctors: { name: doctor["name"] },
+      services: service ? { name: service["name"] } : null,
+    };
+    persist("appointments", appointment);
+    persist("booking_form_submissions", {
+      id: newId(),
+      form_id: form["id"],
+      form_title: form["title"],
+      appointment_id: appointment["id"],
+      patient_id: patient["id"],
+      created_at: new Date().toISOString(),
+      answers: ((form["fields"] ?? []) as Row[])
+        .filter((f) => f["type"] !== "appointment" && String(answers[String(f["id"])] ?? "").trim())
+        .map((f) => ({
+          field_id: f["id"],
+          label: f["label"],
+          type: f["type"],
+          value: answers[String(f["id"])],
+        })),
+      appointments: {
+        appointment_number: appointment["appointment_number"],
+        appointment_date: day,
+        start_time: start,
+        status: "pending",
+      },
+      patients: appointment["patients"],
+    });
+    persist("notifications", {
+      id: newId(),
+      type: "appointment.created",
+      title: "موعد جديد",
+      message: `${String(patient["full_name"])} — ${String(appointment["appointment_number"])}`,
+      is_read: false,
+      created_at: new Date().toISOString(),
+    });
+    return { handled: true, value: confirm(appointment, false) };
+  }
+
+  if (fn === "get_public_chatbot") {
+    const bot = rowsOf("chatbot_settings")[0];
+    if (!bot || bot["slug"] !== args["_slug"] || bot["is_active"] !== true)
+      return { handled: true, value: null };
+    const bookingForm = rowsOf("booking_forms").find(
+      (f) => f["id"] === bot["booking_form_id"] && f["is_active"] === true,
+    );
+    return {
+      handled: true,
+      value: {
+        bot_name: bot["bot_name"],
+        welcome_message: bot["welcome_message"],
+        mode: bot["mode"],
+        menu: bot["menu"],
+        fallback_message: bot["fallback_message"],
+        booking_slug: bookingForm?.["slug"] ?? null,
+        clinic: {
+          name: clinic["clinic_name"],
+          phone: clinic["phone"],
+          email: clinic["email"],
+          address: clinic["address"],
+          city: clinic["city"],
+          working_hours: clinic["working_hours"] ?? {},
+        },
+        specialties: rowsOf("specialties")
+          .filter((s) => s["is_active"] !== false)
+          .map((s) => ({ id: s["id"], name: s["name"] })),
+        services: rowsOf("services")
+          .filter((v) => v["is_active"] !== false)
+          .map((v) => ({
+            name: v["name"],
+            price: v["price"],
+            duration_minutes: v["duration_minutes"],
+            specialty_id: v["specialty_id"] ?? null,
+            description: v["description"] ?? null,
+          })),
+        doctors: rowsOf("doctors")
+          .filter((d) => d["status"] === "active")
+          .map((d) => ({ name: d["name"], specialty_id: d["specialty_id"] ?? null })),
+        knowledge: rowsOf("chatbot_knowledge")
+          .filter((k) => k["is_active"] === true)
+          .map((k) => ({ category: k["category"], question: k["question"], answer: k["answer"] })),
+      },
+    };
+  }
+  if (fn === "consume_chatbot_ai_quota")
+    return { handled: true, value: { allowed: false, reason: "ai_disabled" } };
+  if (fn === "log_chatbot_exchange") {
+    persist("chatbot_logs", {
+      id: newId(),
+      session_id: args["_session"],
+      question: args["_question"],
+      answer: args["_answer"],
+      source: args["_source"],
+      created_at: new Date().toISOString(),
+    });
+    return { handled: true, value: null };
+  }
+  return { handled: false };
+}
+
 /** The human-handoff RPCs, replayed against the in-memory tables. */
 function mockRpc(fn: string, args: Row): unknown {
+  const publicRpc = mockPublicRpc(fn, args);
+  if (publicRpc.handled) return publicRpc.value;
   const handoffFns = [
     "request_human_handoff",
     "claim_conversation",
@@ -1204,8 +1881,24 @@ function mockRpc(fn: string, args: Row): unknown {
   return true;
 }
 
+function formStats(): Row[] {
+  const stats = new Map<unknown, Row>();
+  for (const s of (MOCK["booking_form_submissions"] ?? []) as Row[]) {
+    const current = stats.get(s["form_id"]);
+    stats.set(s["form_id"], {
+      form_id: s["form_id"],
+      submissions: Number(current?.["submissions"] ?? 0) + 1,
+      last_submission_at:
+        current && String(current["last_submission_at"]) > String(s["created_at"])
+          ? current["last_submission_at"]
+          : s["created_at"],
+    });
+  }
+  return [...stats.values()];
+}
+
 function builder(table: string) {
-  let rows = [...(MOCK[table] ?? [])] as Row[];
+  let rows = (table === "booking_form_stats" ? formStats() : [...(MOCK[table] ?? [])]) as Row[];
   let head = false;
 
   // Filters apply only to columns the mock table actually carries, so partially
@@ -1248,8 +1941,9 @@ function builder(table: string) {
     then: (onF: (r: Res<unknown>) => unknown, onR?: (e: unknown) => unknown) =>
       (head ? ok(null, rows.length) : ok(rows)).then(onF, onR),
     insert(v: Record<string, unknown> | Record<string, unknown>[]) {
-      const made = Array.isArray(v) ? v.map(withGeneratedFields) : withGeneratedFields(v);
-      const single = Array.isArray(made) ? made[0] : made;
+      const made = (Array.isArray(v) ? v : [v]).map((row) => withGeneratedFields(table, row));
+      made.forEach((row) => persist(table, row));
+      const single = made[0];
       const ins: Record<string, unknown> = {
         select: () => ins,
         single: () => ok(single),
@@ -1279,8 +1973,14 @@ function builder(table: string) {
       return upd;
     },
     delete() {
+      const remove = (test: (r: Row) => boolean) => {
+        MOCK[table] = ((MOCK[table] ?? []) as Row[]).filter((r) => !test(r));
+        return ok(null);
+      };
       const del: Record<string, unknown> = {
-        eq: () => ok(null),
+        eq: (col: string, val: unknown) => remove((r) => r[col] === val),
+        in: (col: string, vals: unknown[]) => remove((r) => vals.includes(r[col])),
+        not: (col: string, _op: string, val: unknown) => remove((r) => (r[col] ?? null) !== val),
         match: () => ok(null),
         then: (onF: (r: Res<unknown>) => unknown, onR?: (e: unknown) => unknown) =>
           ok(null).then(onF, onR),
@@ -1315,7 +2015,17 @@ export function getMockClient(): Record<string, unknown> {
   if (cached) return cached;
   cached = {
     from: (table: string) => builder(table),
-    rpc: (fn: string, args: Row = {}) => ok(mockRpc(fn, args)),
+    rpc: (fn: string, args: Row = {}) => {
+      try {
+        return ok(mockRpc(fn, args));
+      } catch (e) {
+        if (!(e instanceof MockRpcError)) throw e;
+        return Promise.resolve({
+          data: null,
+          error: { message: e.message, code: "P0001", details: null, hint: null },
+        });
+      }
+    },
     channel: () => {
       const ch: Record<string, unknown> = {
         on: () => ch,
