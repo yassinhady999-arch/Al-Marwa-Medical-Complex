@@ -3,6 +3,7 @@
 // staff added in «تدريب الشات بوت».
 import Anthropic from "@anthropic-ai/sdk";
 import { AI_MODELS, formatWorkingHours, type PublicChatbot } from "@/lib/chatbot";
+import { departmentIds } from "@/lib/clinic";
 
 const MODEL_IDS = new Set<string>(AI_MODELS.map((m) => m.id));
 const DEFAULT_MODEL = "claude-opus-5-5";
@@ -68,14 +69,15 @@ export function buildSystemPrompt(
     "الخدمات_والأسعار",
     bot.services.map(
       (s) =>
-        `- ${s.name}${specialty(s.specialty_id) ? ` (${specialty(s.specialty_id)})` : ""}: ${s.price} ر.س، المدة ${s.duration_minutes} دقيقة${s.description ? ` — ${s.description}` : ""}`,
+        `- ${s.name}${specialty(s.specialty_id) ? ` (${specialty(s.specialty_id)})` : ""}: ${s.price > 0 ? `${s.price} ر.س` : "السعر عند الاستفسار (غير محدد، لا تذكر رقمًا)"}${s.description ? ` — ${s.description}` : ""}`,
     ),
   );
   const doctors = section(
     "الأطباء",
-    bot.doctors.map(
-      (d) => `- ${d.name}${specialty(d.specialty_id) ? ` — ${specialty(d.specialty_id)}` : ""}`,
-    ),
+    bot.doctors.map((d) => {
+      const depts = departmentIds(d).map(specialty).filter(Boolean).join("، ");
+      return `- ${d.name}${depts ? ` — ${depts}` : ""}${d.bio?.trim() ? ` (${d.bio.trim()})` : ""}`;
+    }),
   );
   const knowledge = section(
     "أسئلة_وأجوبة_معتمدة_من_العيادة",

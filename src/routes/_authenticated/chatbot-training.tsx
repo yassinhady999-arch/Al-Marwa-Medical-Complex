@@ -65,7 +65,14 @@ import { ShareLink } from "@/components/app/share-link";
 import { ChatbotWidget, type AskAi } from "@/components/chatbot/chatbot-widget";
 import { MenuEditor } from "@/components/chatbot/menu-editor";
 import { cn, copyText } from "@/lib/utils";
-import { dbErrorMessage, formatRelative, todayRiyadh, type Tone } from "@/lib/clinic";
+import {
+  DOCTOR_DEPARTMENTS,
+  dbErrorMessage,
+  departmentIds,
+  formatRelative,
+  todayRiyadh,
+  type Tone,
+} from "@/lib/clinic";
 import {
   AI_MODELS,
   CHATBOT_MODES,
@@ -192,7 +199,11 @@ async function fetchLiveData() {
       .select("name, price, duration_minutes, specialty_id, description")
       .eq("is_active", true)
       .order("name"),
-    supabase.from("doctors").select("name, specialty_id").eq("status", "active").order("name"),
+    supabase
+      .from("doctors")
+      .select(`name, specialty_id, bio, ${DOCTOR_DEPARTMENTS}`)
+      .eq("status", "active")
+      .order("name"),
     supabase
       .from("clinic_settings")
       .select("clinic_name, phone, email, address, city, working_hours")
@@ -202,7 +213,10 @@ async function fetchLiveData() {
   return {
     specialties: specialties.data ?? [],
     services: (services.data ?? []).map((s) => ({ ...s, price: Number(s.price ?? 0) })),
-    doctors: doctors.data ?? [],
+    doctors: (doctors.data ?? []).map(({ doctor_specialties, ...d }) => ({
+      ...d,
+      specialty_ids: departmentIds({ ...d, doctor_specialties }),
+    })),
     clinic: clinic.data
       ? {
           name: clinic.data.clinic_name,

@@ -19,8 +19,9 @@ import {
 import { cn } from "@/lib/utils";
 import {
   WEEKDAYS,
-  currency,
+  priceLabel,
   dbErrorMessage,
+  worksIn,
   formatDate,
   formatTime,
   todayRiyadh,
@@ -98,9 +99,7 @@ export function BookingFormView({
   );
   const service = services.find((s) => s.id === serviceId);
   const doctorSpecialty = service ? service.specialty_id : activeSpecialty || null;
-  const doctors = form.doctors.filter(
-    (d) => !doctorSpecialty || d.specialty_id === doctorSpecialty,
-  );
+  const doctors = form.doctors.filter((d) => !doctorSpecialty || worksIn(d, doctorSpecialty));
   const chosenDoctor =
     settings.choose_doctor && doctorId !== ANY_DOCTOR && doctors.some((d) => d.id === doctorId)
       ? doctorId
@@ -329,7 +328,7 @@ export function BookingFormView({
                     {services.map((s) => (
                       <SelectItem key={s.id} value={s.id}>
                         {s.name} · {s.duration_minutes} د
-                        {settings.show_prices ? ` · ${currency(s.price)}` : ""}
+                        {settings.show_prices ? ` · ${priceLabel(s.price)}` : ""}
                       </SelectItem>
                     ))}
                   </SelectContent>

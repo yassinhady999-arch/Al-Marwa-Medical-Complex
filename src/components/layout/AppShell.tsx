@@ -39,6 +39,7 @@ import {
 import { ADMIN_ONLY_SECTIONS, type SectionKey } from "@/lib/access";
 import { initials } from "@/lib/clinic";
 import { useHandoffWaitingCount } from "@/lib/handoff";
+import { BRAND } from "@/lib/brand";
 
 export { EmptyState } from "@/components/app/empty-state";
 
@@ -151,18 +152,20 @@ export function AppFrame({ children }: { children: ReactNode }) {
           )}
         >
           <div className="flex items-center gap-3 px-5 pb-6 pt-7">
-            <Stethoscope
-              className="size-7 shrink-0 text-sidebar-primary"
-              style={{
-                filter:
-                  "drop-shadow(0 0 8px color-mix(in oklch, var(--color-sidebar-primary) 35%, transparent))",
-              }}
+            <img
+              src={BRAND.mark}
+              alt=""
+              width={48}
+              height={48}
+              className="size-12 shrink-0 rounded-2xl bg-white object-contain p-0.5 shadow-sm"
             />
             <div className="min-w-0">
               <p className="truncate text-[15px] font-semibold text-sidebar-foreground">
-                نظام تشغيل العيادة
+                {BRAND.name}
               </p>
-              <p className="truncate text-[10px] text-sidebar-muted">Clinic Operations</p>
+              <p className="truncate text-[10px] text-sidebar-muted" dir="ltr">
+                {BRAND.nameEn}
+              </p>
             </div>
             <button
               className="ms-auto rounded-lg p-1 text-sidebar-muted hover:text-sidebar-foreground lg:hidden"

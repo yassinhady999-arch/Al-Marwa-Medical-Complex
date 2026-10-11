@@ -247,7 +247,8 @@ export type PublicBookingForm = {
   } | null;
   specialties: { id: string; name: string }[];
   services: PublicService[];
-  doctors: { id: string; name: string; specialty_id: string | null }[];
+  /** specialty_ids: every department the doctor takes bookings in (main one included). */
+  doctors: { id: string; name: string; specialty_id: string | null; specialty_ids?: string[] }[];
 };
 
 /** The `get_public_booking_form` RPC payload, or null when the form is missing or paused. */

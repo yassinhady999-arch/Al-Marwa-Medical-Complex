@@ -7,6 +7,7 @@ import { isPreviewMode } from "@/integrations/supabase/mock";
 import { Skeleton } from "@/components/ui/skeleton";
 import { ChatbotWidget, type AskAi } from "@/components/chatbot/chatbot-widget";
 import { parsePublicChatbot } from "@/lib/chatbot";
+import { BRAND } from "@/lib/brand";
 
 export const Route = createFileRoute("/chat/$slug")({
   ssr: false,
@@ -54,7 +55,7 @@ function PublicChatPage() {
   });
 
   useEffect(() => {
-    if (bot) document.title = [bot.bot_name, bot.clinic?.name].filter(Boolean).join(" | ");
+    if (bot) document.title = [bot.bot_name, bot.clinic?.name || BRAND.name].join(" | ");
   }, [bot]);
 
   // In the local mock preview there is no server-side bot, so typed questions are answered locally.

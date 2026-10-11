@@ -12,7 +12,7 @@ import {
 } from "lucide-react";
 import type { Json } from "@/integrations/supabase/types";
 import { normalizeArabic } from "@/lib/arabic";
-import { WEEKDAYS, currency, formatTime } from "@/lib/clinic";
+import { WEEKDAYS, departmentIds, formatTime, priceLabel, worksIn } from "@/lib/clinic";
 
 export type MenuKind = "text" | "services" | "doctors" | "hours" | "contact" | "booking" | "link";
 
@@ -59,7 +59,13 @@ export type PublicChatbot = {
     specialty_id: string | null;
     description: string | null;
   }[];
-  doctors: { name: string; specialty_id: string | null }[];
+  doctors: {
+    name: string;
+    specialty_id: string | null;
+    /** Every department the doctor works in (main one included). */
+    specialty_ids?: string[] | undefined;
+    bio?: string | null | undefined;
+  }[];
   knowledge: KnowledgeEntry[];
 };
 
@@ -352,7 +358,7 @@ export function renderNodeReply(node: MenuNode, bot: PublicChatbot, origin: stri
       const groups = new Map<string, string[]>();
       for (const s of services) {
         const key = specialtyName(s.specialty_id) ?? "خدمات عامة";
-        const line = `• ${s.name} — ${currency(s.price)}${s.duration_minutes ? ` (${s.duration_minutes} د)` : ""}`;
+        const line = `• ${s.name} — ${priceLabel(s.price)}`;
         groups.set(key, [...(groups.get(key) ?? []), line]);
       }
       const body =
@@ -365,13 +371,21 @@ export function renderNodeReply(node: MenuNode, bot: PublicChatbot, origin: stri
     }
     case "doctors": {
       const doctors = bot.doctors.filter(
-        (d) => !node.specialty_id || d.specialty_id === node.specialty_id,
+        (d) => !node.specialty_id || worksIn(d, node.specialty_id),
       );
       if (doctors.length === 0)
         return { text: join(intro, "لا يوجد أطباء معروضون حاليًا."), links: [] };
       const lines = doctors.map((d) => {
-        const spec = specialtyName(d.specialty_id);
-        return `• ${d.name}${spec ? ` — ${spec}` : ""}`;
+        // Inside one department its name is already the heading; list the others too.
+        const depts = departmentIds(d)
+          .filter((id) => id !== node.specialty_id)
+          .map(specialtyName)
+          .filter(Boolean)
+          .join("، ");
+        const bio = d.bio?.trim();
+        return [`• ${d.name}${depts ? ` — ${depts}` : ""}`, bio && `   ${bio}`]
+          .filter(Boolean)
+          .join("\n");
       });
       return { text: join(intro, lines.join("\n")), links: [] };
     }
@@ -428,7 +442,7 @@ export function renderNodeReply(node: MenuNode, bot: PublicChatbot, origin: stri
 
 const STOPWORDS = new Set(
   (
-    "في من على الى إلى عن هل يا او أو ما ماذا انا أنا انت انتم ابي ابغى ابغي ابغا اريد أريد ودي بدي ممكن لو سمحت عندكم عندك لكم " +
+    "في من مين على الى إلى عن هل يا او أو ما ماذا انا أنا انت انتم ابي ابغى ابغي ابغا اريد أريد ودي بدي ممكن لو سمحت عندكم عندك لكم " +
     "لي هذا هذه ذلك اللي التي الذي مع كيف وش ايش شو كم متى عشان علشان شكرا السلام عليكم مرحبا اهلا يوجد توجد فيه هناك عندي لدي the a an is are to i you do can what how"
   )
     .split(" ")
@@ -443,7 +457,7 @@ const SYNONYMS: [string, string[]][] = [
   ["حجز", ["حجز", "احجز", "موعد", "مواعيد", "book", "appointment"]],
   ["الغاء", ["الغاء", "الغي", "كنسل", "cancel"]],
   ["تامين", ["تامين", "insurance"]],
-  ["دكتور", ["دكتور", "دكتوره", "طبيب", "طبيبه", "اطباء", "doctor"]],
+  ["دكتور", ["دكتور", "دكتوره", "دكاتره", "دكاتر", "طبيب", "طبيبه", "اطباء", "doctor"]],
 ];
 
 function canonical(token: string): string {
@@ -467,7 +481,9 @@ export function keywords(text: string): Set<string> {
     .replace(/[^\p{L}\p{N}\s]/gu, " ")
     .split(/\s+/)) {
     if (raw.length < 2 || STOPWORDS.has(raw)) continue;
-    const token = canonical(stripArticle(raw));
+    // Synonyms first: "الغي" is a verb, not "ال" + "غي".
+    const direct = canonical(raw);
+    const token = direct !== raw ? direct : canonical(stripArticle(raw));
     if (!STOPWORDS.has(token)) out.add(token);
   }
   return out;
@@ -492,7 +508,9 @@ export function findKnowledgeAnswer(
     if (stored.length === 0) continue;
     const hits = stored.filter((w) => asked.some((a) => similar(a, w))).length;
     if (hits === 0) continue;
-    const score = (hits / stored.length) * 0.7 + (hits / asked.length) * 0.3;
+    // Equal weight on both sides, so a short generic entry ("كيف أحجز موعد؟") doesn't beat one
+    // that covers more of what the customer actually asked ("كيف ألغي موعدي؟").
+    const score = (hits / stored.length) * 0.5 + (hits / asked.length) * 0.5;
     if (score > bestScore) {
       best = entry;
       bestScore = score;

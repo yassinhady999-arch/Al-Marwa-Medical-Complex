@@ -43,7 +43,14 @@ import { ShareLink } from "@/components/app/share-link";
 import { EditAppointmentDialog } from "@/components/app/edit-appointment-dialog";
 import { BookingFormView } from "@/components/booking/booking-form-view";
 import { cn } from "@/lib/utils";
-import { dbErrorMessage, formatDate, formatRelative, formatTime } from "@/lib/clinic";
+import {
+  DOCTOR_DEPARTMENTS,
+  dbErrorMessage,
+  departmentIds,
+  formatDate,
+  formatRelative,
+  formatTime,
+} from "@/lib/clinic";
 import type { AppointmentStatus } from "@/lib/clinic";
 import {
   CUSTOM_FIELD_META,
@@ -97,7 +104,11 @@ async function fetchRefs() {
       .select("id, name, specialty_id, duration_minutes, price, description")
       .eq("is_active", true)
       .order("name"),
-    supabase.from("doctors").select("id, name, specialty_id").eq("status", "active").order("name"),
+    supabase
+      .from("doctors")
+      .select(`id, name, specialty_id, ${DOCTOR_DEPARTMENTS}`)
+      .eq("status", "active")
+      .order("name"),
     supabase
       .from("clinic_settings")
       .select("clinic_name, phone, address, city, logo_url")
@@ -107,7 +118,10 @@ async function fetchRefs() {
   return {
     specialties: specialties.data ?? [],
     services: (services.data ?? []).map((s) => ({ ...s, price: Number(s.price ?? 0) })),
-    doctors: doctors.data ?? [],
+    doctors: (doctors.data ?? []).map(({ doctor_specialties, ...d }) => ({
+      ...d,
+      specialty_ids: departmentIds({ ...d, doctor_specialties }),
+    })),
     clinic: clinic.data
       ? {
           name: clinic.data.clinic_name,
@@ -187,8 +201,10 @@ function toPreview(draft: Draft, refs: Refs, form: FormRecord): PublicBookingFor
   const { specialty_ids, service_ids } = draft.settings;
   const allowSpecialty = (id: string | null) =>
     specialty_ids.length === 0 || (id !== null && specialty_ids.includes(id));
-  const doctors = refs.doctors.filter((d) => allowSpecialty(d.specialty_id));
-  const hasDoctor = (id: string) => doctors.some((d) => d.specialty_id === id);
+  const doctors = refs.doctors.filter(
+    (d) => specialty_ids.length === 0 || d.specialty_ids.some((id) => allowSpecialty(id)),
+  );
+  const hasDoctor = (id: string) => doctors.some((d) => d.specialty_ids.includes(id));
   return {
     id: form.id,
     slug: form.slug,

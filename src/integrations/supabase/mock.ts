@@ -265,14 +265,17 @@ const SCHED = (days: number[]) =>
     day_of_week: d,
     start_time: "09:00:00",
     end_time: "17:00:00",
+    break_start: null,
+    break_end: null,
     is_active: true,
   }));
+const DEPTS = (...ids: string[]) => ids.map((specialty_id) => ({ specialty_id }));
 
 const MOCK: Record<string, unknown[]> = {
   clinic_settings: [
     {
       id: "clinic-1",
-      clinic_name: "عيادة النخبة الطبية",
+      clinic_name: "مجمع المروة السيل الطبي",
       phone: "+966112345678",
       email: "info@nukhba.sa",
       city: "الرياض",
@@ -422,6 +425,7 @@ const MOCK: Record<string, unknown[]> = {
       bio: null,
       specialties: { name: "طب الأسنان" },
       specialty_id: "sp1",
+      doctor_specialties: DEPTS("sp1"),
       doctor_schedules: SCHED([0, 1, 2, 3, 4]),
     },
     {
@@ -433,6 +437,7 @@ const MOCK: Record<string, unknown[]> = {
       bio: null,
       specialties: { name: "الجلدية" },
       specialty_id: "sp2",
+      doctor_specialties: DEPTS("sp2"),
       doctor_schedules: SCHED([0, 2, 4]),
     },
     {
@@ -441,9 +446,11 @@ const MOCK: Record<string, unknown[]> = {
       phone: "+966553330000",
       email: null,
       status: "active",
-      bio: null,
+      bio: "متابعة نمو الأطفال والتطعيمات، والباطنة العامة.",
       specialties: { name: "طب الأطفال" },
       specialty_id: "sp3",
+      // Works in two departments, like a real doctor covering pediatrics and internal medicine.
+      doctor_specialties: DEPTS("sp3", "sp4"),
       doctor_schedules: SCHED([1, 3, 5]),
     },
     {
@@ -455,6 +462,7 @@ const MOCK: Record<string, unknown[]> = {
       bio: null,
       specialties: { name: "الباطنة" },
       specialty_id: "sp4",
+      doctor_specialties: DEPTS("sp4"),
       doctor_schedules: [],
     },
   ],
@@ -677,7 +685,7 @@ const MOCK: Record<string, unknown[]> = {
       conversation_id: "c1",
       direction: "outbound",
       sender_type: "ai",
-      content: "وعليكم السلام 👋 أهلاً بك في عيادة النخبة. تفضّل باسمك الكامل ورقم جوالك.",
+      content: "وعليكم السلام 👋 أهلاً بك في مجمع المروة السيل الطبي. تفضّل باسمك الكامل ورقم جوالك.",
       created_at: stamp(39),
     },
     {
@@ -1169,8 +1177,8 @@ const MOCK: Record<string, unknown[]> = {
     {
       id: "bot1",
       slug: "nukhbabot001",
-      bot_name: "مساعد عيادة النخبة",
-      welcome_message: "أهلًا بك في عيادة النخبة الطبية 👋 كيف أقدر أساعدك اليوم؟",
+      bot_name: "مساعد مجمع المروة",
+      welcome_message: "أهلًا بك في مجمع المروة السيل الطبي 👋 كيف أقدر أساعدك اليوم؟",
       mode: "hybrid",
       is_active: true,
       fallback_message:
@@ -1518,6 +1526,12 @@ const toMinutes = (t: unknown) => {
 const toTime = (min: number) =>
   `${String(Math.floor(min / 60)).padStart(2, "0")}:${String(min % 60).padStart(2, "0")}:00`;
 
+/** Every department a mock doctor works in (main one first), like doctor_specialty_ids. */
+function mockDepts(d: Row): unknown[] {
+  const extra = ((d["doctor_specialties"] ?? []) as Row[]).map((x) => x["specialty_id"]);
+  return [...new Set([d["specialty_id"], ...extra].filter((x) => x != null))];
+}
+
 /** Free start times for a doctor on a day, like get_available_slots. */
 function mockSlots(doctorId: unknown, day: string, duration: number): string[] {
   const doctor = rowsOf("doctors").find((d) => d["id"] === doctorId && d["status"] === "active");
@@ -1542,7 +1556,12 @@ function mockSlots(doctorId: unknown, day: string, duration: number): string[] {
     t + duration <= toMinutes(sch["end_time"]);
     t += duration
   ) {
-    if (t <= past || booked.some(([s, e]) => s < t + duration && e > t)) continue;
+    const inBreak =
+      sch["break_start"] != null &&
+      sch["break_end"] != null &&
+      t < toMinutes(sch["break_end"]) &&
+      t + duration > toMinutes(sch["break_start"]);
+    if (inBreak || t <= past || booked.some(([s, e]) => s < t + duration && e > t)) continue;
     out.push(toTime(t));
   }
   return out;
@@ -1554,9 +1573,11 @@ function formScope(form: Row) {
   const allowSpec = (id: unknown) =>
     ids("specialty_ids").length === 0 || (id != null && ids("specialty_ids").includes(id));
   const doctors = rowsOf("doctors").filter(
-    (d) => d["status"] === "active" && allowSpec(d["specialty_id"] ?? null),
+    (d) =>
+      d["status"] === "active" &&
+      (ids("specialty_ids").length === 0 || mockDepts(d).some((id) => allowSpec(id))),
   );
-  const hasDoctor = (id: unknown) => doctors.some((d) => d["specialty_id"] === id);
+  const hasDoctor = (id: unknown) => doctors.some((d) => mockDepts(d).includes(id));
   const services = rowsOf("services").filter(
     (v) =>
       v["is_active"] !== false &&
@@ -1609,6 +1630,7 @@ function mockPublicRpc(fn: string, args: Row): { handled: boolean; value?: unkno
           id: d["id"],
           name: d["name"],
           specialty_id: d["specialty_id"] ?? null,
+          specialty_ids: mockDepts(d),
         })),
       },
     };
@@ -1635,7 +1657,8 @@ function mockPublicRpc(fn: string, args: Row): { handled: boolean; value?: unkno
     const spec = service ? (service["specialty_id"] ?? null) : (source["specialty_id"] ?? null);
     const chosen = settings["choose_doctor"] !== false ? (source["doctor_id"] ?? null) : null;
     const candidates = doctors.filter(
-      (d) => (spec == null || d["specialty_id"] === spec) && (chosen == null || d["id"] === chosen),
+      (d) =>
+        (spec == null || mockDepts(d).includes(spec)) && (chosen == null || d["id"] === chosen),
     );
     const windowDays = Number(settings["booking_window_days"] ?? 21);
 
@@ -1786,7 +1809,12 @@ function mockPublicRpc(fn: string, args: Row): { handled: boolean; value?: unkno
           })),
         doctors: rowsOf("doctors")
           .filter((d) => d["status"] === "active")
-          .map((d) => ({ name: d["name"], specialty_id: d["specialty_id"] ?? null })),
+          .map((d) => ({
+            name: d["name"],
+            specialty_id: d["specialty_id"] ?? null,
+            specialty_ids: mockDepts(d),
+            bio: d["bio"] ?? null,
+          })),
         knowledge: rowsOf("chatbot_knowledge")
           .filter((k) => k["is_active"] === true)
           .map((k) => ({ category: k["category"], question: k["question"], answer: k["answer"] })),
@@ -1810,9 +1838,50 @@ function mockPublicRpc(fn: string, args: Row): { handled: boolean; value?: unkno
 }
 
 /** The human-handoff RPCs, replayed against the in-memory tables. */
+/** save_doctor: details, departments (first = main) and weekly schedule in one go. */
+function mockSaveDoctor(args: Row): string {
+  const p = (args["_payload"] ?? {}) as Row;
+  const name = String(p["name"] ?? "").trim();
+  if (name.length < 2) throw new MockRpcError("INVALID_NAME: اكتب اسم الطبيب");
+  const depts = [...new Set((p["specialty_ids"] ?? []) as string[])];
+  const schedules = ((p["schedules"] ?? []) as Row[]).map((d) => ({
+    day_of_week: Number(d["day_of_week"]),
+    start_time: `${String(d["start_time"]).slice(0, 5)}:00`,
+    end_time: `${String(d["end_time"]).slice(0, 5)}:00`,
+    break_start: d["break_start"] ? `${String(d["break_start"]).slice(0, 5)}:00` : null,
+    break_end: d["break_end"] ? `${String(d["break_end"]).slice(0, 5)}:00` : null,
+    is_active: true,
+  }));
+  if (schedules.some((d) => d.start_time >= d.end_time))
+    throw new MockRpcError("INVALID_SCHEDULE: وقت النهاية يجب أن يكون بعد وقت البداية");
+  const main = depts[0] ?? null;
+  const fields = {
+    name,
+    phone: String(p["phone"] ?? "").trim() || null,
+    email: String(p["email"] ?? "").trim() || null,
+    bio: String(p["bio"] ?? "").trim() || null,
+    status: p["status"] === "inactive" ? "inactive" : "active",
+    specialty_id: main,
+    specialties: main
+      ? { name: rowsOf("specialties").find((s) => s["id"] === main)?.["name"] }
+      : null,
+    doctor_specialties: DEPTS(...depts),
+    doctor_schedules: schedules,
+  };
+  const existing = rowsOf("doctors").find((d) => d["id"] === args["_doctor_id"]);
+  if (existing) {
+    Object.assign(existing, fields);
+    return String(existing["id"]);
+  }
+  const id = newId();
+  persist("doctors", { id, avatar_url: null, user_id: null, ...fields });
+  return id;
+}
+
 function mockRpc(fn: string, args: Row): unknown {
   const publicRpc = mockPublicRpc(fn, args);
   if (publicRpc.handled) return publicRpc.value;
+  if (fn === "save_doctor") return mockSaveDoctor(args);
   const handoffFns = [
     "request_human_handoff",
     "claim_conversation",
@@ -1960,6 +2029,10 @@ function builder(table: string) {
           if (!test(r)) continue;
           Object.assign(r, patch);
           if (table === "appointments") refreshAppointmentEmbeds(r);
+          if (table === "services" && "specialty_id" in patch) {
+            const spec = rowsOf("specialties").find((s) => s["id"] === patch["specialty_id"]);
+            r["specialties"] = spec ? { name: spec["name"] } : null;
+          }
         }
         return ok(null);
       };

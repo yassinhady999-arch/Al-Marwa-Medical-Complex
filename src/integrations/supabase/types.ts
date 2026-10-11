@@ -662,6 +662,39 @@ export type Database = {
           },
         ];
       };
+      doctor_specialties: {
+        Row: {
+          created_at: string;
+          doctor_id: string;
+          specialty_id: string;
+        };
+        Insert: {
+          created_at?: string;
+          doctor_id: string;
+          specialty_id: string;
+        };
+        Update: {
+          created_at?: string;
+          doctor_id?: string;
+          specialty_id?: string;
+        };
+        Relationships: [
+          {
+            foreignKeyName: "doctor_specialties_doctor_id_fkey";
+            columns: ["doctor_id"];
+            isOneToOne: false;
+            referencedRelation: "doctors";
+            referencedColumns: ["id"];
+          },
+          {
+            foreignKeyName: "doctor_specialties_specialty_id_fkey";
+            columns: ["specialty_id"];
+            isOneToOne: false;
+            referencedRelation: "specialties";
+            referencedColumns: ["id"];
+          },
+        ];
+      };
       doctors: {
         Row: {
           avatar_url: string | null;
@@ -1150,6 +1183,10 @@ export type Database = {
       request_human_handoff: {
         Args: { _conversation_id: string; _reason?: string };
         Returns: boolean;
+      };
+      save_doctor: {
+        Args: { _doctor_id: string | null; _payload: Json };
+        Returns: string;
       };
       send_human_reply: {
         Args: { _content: string; _conversation_id: string };

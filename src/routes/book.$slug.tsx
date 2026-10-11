@@ -1,11 +1,12 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useQuery } from "@tanstack/react-query";
 import { useEffect } from "react";
-import { CalendarX2, MapPin, Phone, Stethoscope } from "lucide-react";
+import { CalendarX2, MapPin, Phone } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { Skeleton } from "@/components/ui/skeleton";
 import { BookingFormView } from "@/components/booking/booking-form-view";
 import { parsePublicForm } from "@/lib/booking-forms";
+import { BRAND } from "@/lib/brand";
 
 export const Route = createFileRoute("/book/$slug")({
   ssr: false,
@@ -37,7 +38,7 @@ function PublicBookingPage() {
   });
 
   useEffect(() => {
-    if (form) document.title = [form.title, form.clinic?.name].filter(Boolean).join(" | ");
+    if (form) document.title = [form.title, form.clinic?.name || BRAND.name].join(" | ");
   }, [form]);
 
   const clinic = form?.clinic;
@@ -45,20 +46,17 @@ function PublicBookingPage() {
   return (
     <div className="app-canvas min-h-screen px-4 py-6 sm:py-10">
       <div className="mx-auto w-full max-w-xl">
-        <div className="mb-4 flex items-center gap-3">
-          {clinic?.logo_url ? (
-            <img src={clinic.logo_url} alt="" className="size-11 rounded-xl object-cover" />
-          ) : (
-            <span className="grid size-11 place-items-center rounded-xl bg-primary/15 text-primary-emphasis">
-              <Stethoscope className="size-6" />
-            </span>
-          )}
+        <div className="mb-5 flex flex-col items-center gap-2 text-center">
+          <img
+            src={clinic?.logo_url || BRAND.logo}
+            alt={clinic?.name || BRAND.name}
+            width={516}
+            height={444}
+            className="h-28 w-auto rounded-2xl bg-white object-contain p-2 shadow-sm sm:h-32"
+          />
           <div className="min-w-0">
-            <p className="truncate font-bold text-foreground">
-              {clinic?.name ?? (isLoading ? "…" : "حجز موعد")}
-            </p>
             {(clinic?.city || clinic?.phone) && (
-              <p className="flex flex-wrap items-center gap-x-3 text-xs text-muted-foreground">
+              <p className="flex flex-wrap items-center justify-center gap-x-3 text-xs text-muted-foreground">
                 {clinic?.city && (
                   <span className="inline-flex items-center gap-1">
                     <MapPin className="size-3" />

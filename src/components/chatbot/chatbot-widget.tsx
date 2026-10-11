@@ -1,7 +1,8 @@
 import { useEffect, useRef, useState } from "react";
-import { Bot, ExternalLink, LayoutList, SendHorizontal } from "lucide-react";
+import { ExternalLink, LayoutList, SendHorizontal } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
+import { BRAND } from "@/lib/brand";
 import {
   findKnowledgeAnswer,
   isolateLtr,
@@ -162,9 +163,13 @@ export function ChatbotWidget({
   return (
     <div className={cn("flex h-full min-h-0 flex-col bg-surface", className)}>
       <header className="flex items-center gap-3 border-b border-border/70 bg-surface px-4 py-3">
-        <span className="grid size-10 shrink-0 place-items-center rounded-full bg-primary/15 text-primary-emphasis">
-          <Bot className="size-5" />
-        </span>
+        <img
+          src={BRAND.mark}
+          alt=""
+          width={40}
+          height={40}
+          className="size-10 shrink-0 rounded-full border border-border/70 bg-white object-contain p-0.5"
+        />
         <div className="min-w-0">
           <p className="truncate text-sm font-bold text-foreground">{bot.bot_name}</p>
           <p className="flex items-center gap-1.5 truncate text-xs text-muted-foreground">
@@ -175,6 +180,13 @@ export function ChatbotWidget({
       </header>
 
       <div ref={scrollRef} className="min-h-0 flex-1 space-y-3 overflow-y-auto bg-surface-2/40 p-4">
+        <img
+          src={BRAND.logo}
+          alt={bot.clinic?.name || BRAND.name}
+          width={516}
+          height={444}
+          className="mx-auto mb-1 h-24 w-auto rounded-2xl bg-white object-contain p-2 shadow-xs"
+        />
         {items.map((item) => (
           <div key={item.id} className={cn("flex", item.from === "user" && "justify-end")}>
             <div className="max-w-[86%] space-y-2">

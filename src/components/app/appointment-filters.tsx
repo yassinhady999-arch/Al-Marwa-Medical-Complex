@@ -12,6 +12,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { cn } from "@/lib/utils";
+import { DOCTOR_DEPARTMENTS, departmentIds } from "@/lib/clinic";
 
 const ALL = "all";
 
@@ -28,7 +29,14 @@ export type FilterableAppointment = {
   specialty_id?: string | null;
 };
 
-type Option = { id: string; name: string; specialty_id: string | null };
+/** specialty_ids (doctors): every department the doctor works in. */
+type Option = { id: string; name: string; specialty_id: string | null; specialty_ids?: string[] };
+
+/** Options without a department fit every department filter. */
+function fitsSpecialty(o: Option, specialty: string): boolean {
+  const ids = o.specialty_ids ?? (o.specialty_id ? [o.specialty_id] : []);
+  return specialty === ALL || ids.length === 0 || ids.includes(specialty);
+}
 
 export const EMPTY_FILTERS: AppointmentFilters = { specialty: ALL, doctor: ALL, service: ALL };
 
@@ -40,12 +48,18 @@ export function useFilterOptions() {
     queryFn: async () => {
       const [sp, dr, sv] = await Promise.all([
         supabase.from("specialties").select("id, name").order("name"),
-        supabase.from("doctors").select("id, name, specialty_id").order("name"),
+        supabase
+          .from("doctors")
+          .select(`id, name, specialty_id, ${DOCTOR_DEPARTMENTS}`)
+          .order("name"),
         supabase.from("services").select("id, name, specialty_id").order("name"),
       ]);
       return {
         specialties: (sp.data ?? []) as { id: string; name: string }[],
-        doctors: (dr.data ?? []) as Option[],
+        doctors: (dr.data ?? []).map(({ doctor_specialties, ...d }) => ({
+          ...d,
+          specialty_ids: departmentIds({ ...d, doctor_specialties }),
+        })) as Option[],
         services: (sv.data ?? []) as Option[],
       };
     },
@@ -98,8 +112,7 @@ export function AppointmentFilterFields({
   triggerClassName = "w-full sm:w-44",
 }: FieldsProps) {
   const { data: options } = useFilterOptions();
-  const inSpecialty = (o: Option) =>
-    filters.specialty === ALL || !o.specialty_id || o.specialty_id === filters.specialty;
+  const inSpecialty = (o: Option) => fitsSpecialty(o, filters.specialty);
   const doctors = (options?.doctors ?? []).filter(inSpecialty);
   const services = (options?.services ?? []).filter(inSpecialty);
   const active = filters.specialty !== ALL || filters.doctor !== ALL || filters.service !== ALL;
@@ -108,7 +121,7 @@ export function AppointmentFilterFields({
     const fits = (list: Option[], id: string) =>
       id === ALL ||
       specialty === ALL ||
-      list.some((o) => o.id === id && (!o.specialty_id || o.specialty_id === specialty));
+      list.some((o) => o.id === id && fitsSpecialty(o, specialty));
     onChange({
       specialty,
       doctor: fits(options?.doctors ?? [], filters.doctor) ? filters.doctor : ALL,

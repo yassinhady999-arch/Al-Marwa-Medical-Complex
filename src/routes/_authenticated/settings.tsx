@@ -1,6 +1,6 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { useEffect, useState } from "react";
+import { useEffect, useId, useState } from "react";
 import { toast } from "sonner";
 import { Building2, Users, Palette, Clock3 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
@@ -8,6 +8,7 @@ import { AppShell } from "@/components/layout/AppShell";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { Switch } from "@/components/ui/switch";
 import {
   Select,
   SelectContent,
@@ -22,6 +23,7 @@ import { InitialsAvatar } from "@/components/app/avatar";
 import { ThemeToggle } from "@/components/app/theme-toggle";
 import { useProfile, type AppRole } from "@/hooks/use-auth";
 import { logActivity } from "@/lib/activity";
+import { WEEKDAYS } from "@/lib/clinic";
 
 export const Route = createFileRoute("/_authenticated/settings")({
   head: () => ({
@@ -50,7 +52,10 @@ function SettingsPage() {
   return (
     <AppShell title="الإعدادات" description="بيانات العيادة والصلاحيات" section="settings">
       <div className="grid gap-4 lg:grid-cols-2">
-        <ClinicCard canEdit={!!me?.isAdmin} />
+        <div className="space-y-4">
+          <ClinicCard canEdit={!!me?.isAdmin} />
+          <WorkingHoursCard canEdit={!!me?.isAdmin} />
+        </div>
         <div className="space-y-4">
           <UsersCard canEdit={!!me?.isAdmin} />
           <AppearanceCard />
@@ -183,6 +188,132 @@ function ClinicCard({ canEdit }: { canEdit: boolean }) {
           {save.isPending ? "جارٍ الحفظ…" : "حفظ"}
         </Button>
       </div>
+    </SectionCard>
+  );
+}
+
+type DayHours = { enabled: boolean; start: string; end: string };
+
+/** The clinic's opening hours, which the customer chatbot quotes. */
+function WorkingHoursCard({ canEdit }: { canEdit: boolean }) {
+  const qc = useQueryClient();
+  const uid = useId();
+  const { data } = useQuery({
+    queryKey: ["clinic_settings", "hours"],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("clinic_settings")
+        .select("id, working_hours")
+        .limit(1)
+        .maybeSingle();
+      if (error) throw error;
+      return data;
+    },
+  });
+  const stored = (data?.working_hours ?? {}) as Record<string, Partial<DayHours> | undefined>;
+  const unset = Object.keys(stored).length === 0;
+  const [days, setDays] = useState<DayHours[] | null>(null);
+  const shown =
+    days ??
+    WEEKDAYS.map((_, i) => {
+      const d = stored[String(i)];
+      return {
+        enabled: unset ? i !== 5 : d?.enabled !== false && !!d?.start,
+        start: d?.start ?? "09:00",
+        end: d?.end ?? "22:00",
+      };
+    });
+  const setDay = (index: number, patch: Partial<DayHours>) =>
+    setDays(shown.map((d, i) => (i === index ? { ...d, ...patch } : d)));
+  const bad = shown.filter((d) => d.enabled && (!d.start || !d.end || d.start >= d.end));
+
+  const save = useMutation({
+    mutationFn: async () => {
+      if (!data?.id) throw new Error("لا توجد إعدادات عيادة");
+      const working_hours = Object.fromEntries(shown.map((d, i) => [String(i), d]));
+      const { error } = await supabase
+        .from("clinic_settings")
+        .update({ working_hours })
+        .eq("id", data.id);
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      void logActivity({
+        action: "update",
+        section: "settings",
+        description: "تحديث مواعيد العمل",
+        entityType: "clinic_settings",
+      });
+      toast.success("تم حفظ مواعيد العمل");
+      setDays(null);
+      void qc.invalidateQueries({ queryKey: ["clinic_settings"] });
+    },
+    onError: (e: Error) => toast.error(e.message),
+  });
+
+  return (
+    <SectionCard
+      icon={Clock3}
+      title="مواعيد العمل"
+      description="يعرضها الشات بوت عند سؤال العملاء. ساعات كل طبيب تُضبط من صفحة الأطباء."
+    >
+      {unset && (
+        <p className="mb-3 rounded-xl bg-warning-soft px-3 py-2 text-xs text-warning-foreground">
+          لم تُحفظ مواعيد العمل بعد، والشات بوت يطلب من العميل التواصل لمعرفتها.
+        </p>
+      )}
+      <div className="divide-y divide-border/70 rounded-xl border border-border">
+        {shown.map((d, i) => (
+          <div key={i} className="flex flex-wrap items-center gap-x-3 gap-y-2 px-3 py-2">
+            <label
+              htmlFor={`${uid}-${i}`}
+              className="flex w-24 shrink-0 cursor-pointer items-center gap-2 text-sm"
+            >
+              <Switch
+                id={`${uid}-${i}`}
+                checked={d.enabled}
+                disabled={!canEdit}
+                onCheckedChange={(enabled) => setDay(i, { enabled })}
+              />
+              {WEEKDAYS[i]}
+            </label>
+            {d.enabled ? (
+              <div className="flex items-center gap-2 text-xs text-muted-foreground">
+                <span>من</span>
+                <Input
+                  type="time"
+                  aria-label={`بداية ${WEEKDAYS[i]}`}
+                  className="h-8 w-28"
+                  value={d.start}
+                  disabled={!canEdit}
+                  onChange={(e) => setDay(i, { start: e.target.value })}
+                />
+                <span>إلى</span>
+                <Input
+                  type="time"
+                  aria-label={`نهاية ${WEEKDAYS[i]}`}
+                  className="h-8 w-28"
+                  value={d.end}
+                  disabled={!canEdit}
+                  onChange={(e) => setDay(i, { end: e.target.value })}
+                />
+              </div>
+            ) : (
+              <span className="text-xs text-muted-foreground">مغلق</span>
+            )}
+          </div>
+        ))}
+      </div>
+      {bad.length > 0 && (
+        <p className="mt-2 text-xs text-destructive">وقت الإغلاق يجب أن يكون بعد وقت الفتح.</p>
+      )}
+      <Button
+        className="mt-3"
+        onClick={() => save.mutate()}
+        disabled={!canEdit || bad.length > 0 || save.isPending || (!unset && days === null)}
+      >
+        {save.isPending ? "جارٍ الحفظ…" : "حفظ مواعيد العمل"}
+      </Button>
     </SectionCard>
   );
 }

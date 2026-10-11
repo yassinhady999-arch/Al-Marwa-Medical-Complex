@@ -195,6 +195,34 @@ export function currency(value?: number | null): string {
   return `${formatNumber(value)} ر.س`;
 }
 
+/** What customers see for a service price: 0 means the clinic hasn't fixed one yet. */
+export function priceLabel(value?: number | null): string {
+  return Number(value ?? 0) > 0 ? currency(value) : "السعر عند الاستفسار";
+}
+
+/** Embed for a doctors select that returns every department the doctor works in. */
+export const DOCTOR_DEPARTMENTS = "doctor_specialties(specialty_id)";
+
+type DoctorDepartments = {
+  specialty_id: string | null;
+  specialty_ids?: string[] | null | undefined;
+  doctor_specialties?: { specialty_id: string }[] | null | undefined;
+};
+
+/** A doctor's departments, main one first (from the public RPCs or the DOCTOR_DEPARTMENTS embed). */
+export function departmentIds(d: DoctorDepartments): string[] {
+  const ids = [
+    ...(d.specialty_id ? [d.specialty_id] : []),
+    ...(d.specialty_ids ?? []),
+    ...(d.doctor_specialties ?? []).map((x) => x.specialty_id),
+  ];
+  return [...new Set(ids)];
+}
+
+export function worksIn(d: DoctorDepartments, specialtyId: string): boolean {
+  return departmentIds(d).includes(specialtyId);
+}
+
 export function percent(value: number, digits = 0): string {
   return `${(value * 100).toLocaleString("ar-EG", { maximumFractionDigits: digits })}٪`;
 }
