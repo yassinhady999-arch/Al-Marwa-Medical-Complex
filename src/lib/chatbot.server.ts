@@ -1,12 +1,18 @@
-// Server-only: the public chatbot's AI mode. The chat model the clinic picked (Claude
-// or any OpenAI-compatible provider) answers customers using only the clinic's live
-// data (services, doctors, hours, contact) and the knowledge staff added in
-// «تدريب الشات بوت».
+// Server-only: the public chatbot's AI mode. The chat model answers customers using only
+// the clinic's live data (services, doctors, hours, contact) and the knowledge staff added
+// in «تدريب الشات بوت».
+//
+// A key saved on that page is used by the database itself (ai-database.server.ts; the
+// same prompt is built in SQL by chatbot_ai_prompt). This file is the fallback for an
+// Anthropic key set on the hosting as ANTHROPIC_API_KEY.
 import Anthropic from "@anthropic-ai/sdk";
+import type { SupabaseClient } from "@supabase/supabase-js";
+import type { Database } from "@/integrations/supabase/types";
 import { formatWorkingHours, type PublicChatbot } from "@/lib/chatbot";
 import { departmentIds } from "@/lib/clinic";
-import { anthropicFor, compatChat, resolveAi } from "@/lib/ai-key.server";
-import { MODEL_ID_PATTERN, defaultModel } from "@/lib/ai-providers";
+import { anthropicFor } from "@/lib/ai-key.server";
+import { databaseAiAvailable } from "@/lib/ai-database.server";
+import { MODEL_ID_PATTERN } from "@/lib/ai-providers";
 
 const DEFAULT_MODEL = "claude-opus-5-5";
 /** Take `effort` and the server-side refusal fallback; other models get a plain request. */
@@ -15,15 +21,19 @@ const ADAPTIVE_MODELS = new Set<string>(["claude-opus-5-5", "claude-sonnet-5-5"]
 export type CustomerMessage = { role: "user" | "assistant"; content: string };
 
 /** True when a key is available (saved from the staff page, or ANTHROPIC_API_KEY). */
-export async function chatbotAiConfigured(): Promise<boolean> {
-  return (await resolveAi()) !== null;
+export async function chatbotAiConfigured(db: SupabaseClient<Database> | null): Promise<boolean> {
+  if (process.env["ANTHROPIC_API_KEY"]) return true;
+  return db ? databaseAiAvailable(db) : false;
 }
 
 function section(tag: string, lines: string[]): string {
   return lines.length ? `<${tag}>\n${lines.join("\n")}\n</${tag}>` : "";
 }
 
-/** Stable per clinic, so it sits in the cached part of the prompt. */
+/**
+ * Stable per clinic, so it sits in the cached part of the prompt.
+ * Keep in step with chatbot_ai_prompt (SQL), which builds the same text for saved keys.
+ */
 export function buildSystemPrompt(
   bot: PublicChatbot,
   instructions: string,
@@ -96,39 +106,25 @@ function todayRiyadh(): string {
   }).format(new Date());
 }
 
+/** A reply using ANTHROPIC_API_KEY from the hosting settings. */
 export async function answerCustomer(
   bot: PublicChatbot,
   config: { model: string; instructions: string },
   messages: CustomerMessage[],
   bookingUrl: string | null,
 ): Promise<{ answer: string } | { error: string; status: number }> {
-  const ai = await resolveAi();
-  if (!ai) return { error: "ai_not_configured", status: 503 };
+  const key = process.env["ANTHROPIC_API_KEY"];
+  if (!key) return { error: "ai_not_configured", status: 503 };
 
-  // The picked model if the account has it; otherwise the provider's default.
-  const picked =
-    MODEL_ID_PATTERN.test(config.model) &&
-    (ai.models.length === 0 || ai.models.includes(config.model))
-      ? config.model
-      : null;
+  // The picked model when it is a Claude model (the page may hold another provider's).
   const model =
-    picked ??
-    defaultModel(
-      ai.provider,
-      ai.models.map((id) => ({ id })),
-    ) ??
-    (ai.provider === "anthropic" ? DEFAULT_MODEL : null);
-  if (!model) return { error: "model_unavailable", status: 502 };
+    MODEL_ID_PATTERN.test(config.model) && config.model.startsWith("claude-")
+      ? config.model
+      : DEFAULT_MODEL;
   const system = buildSystemPrompt(bot, config.instructions, bookingUrl);
   const today = `تاريخ اليوم بتوقيت الرياض: ${todayRiyadh()}.`;
 
-  if (ai.provider !== "anthropic") {
-    const result = await compatChat(ai, model, `${system}\n\n${today}`, messages);
-    if ("error" in result) return result;
-    return { answer: result.text || bot.fallback_message };
-  }
-
-  const client = anthropicFor(ai.key);
+  const client = anthropicFor(key);
   const params: Anthropic.Beta.MessageCreateParamsNonStreaming = {
     model,
     max_tokens: 4096,

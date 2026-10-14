@@ -1,6 +1,6 @@
-// Server-only: which chat-model provider and key the AI features use. The key an admin
-// saved in «تدريب الشات بوت» (chatbot_ai_credentials, readable only with the service
-// role) wins; ANTHROPIC_API_KEY from the environment is the fallback.
+// Server-only: checking a chat-model key with its provider, and the Anthropic key the
+// staff assistant uses. The customer chatbot never reads the saved key here: the
+// database calls the provider itself (see ai-database.server.ts).
 import Anthropic from "@anthropic-ai/sdk";
 import { createClient } from "@supabase/supabase-js";
 import type { Database } from "@/integrations/supabase/types";
@@ -11,28 +11,15 @@ import {
   type AiProviderId,
 } from "@/lib/ai-providers";
 
-export type AiKeySource = "saved" | "env";
 export type AiModelOption = { id: string; name: string; created_at: string };
-export type ResolvedAi = {
-  provider: AiProviderId;
-  key: string;
-  /** OpenAI-compatible base URL (null for Anthropic). */
-  baseUrl: string | null;
-  /** Model ids saved with the key ([] when unknown). */
-  models: string[];
-  source: AiKeySource;
-};
 export type AiError = { error: string; status: number };
+type SavedAi = { provider: AiProviderId; key: string };
 
 const CACHE_MS = 60_000;
-let cached: { saved: Omit<ResolvedAi, "source"> | null; at: number } | undefined;
+let cached: { saved: SavedAi | null; at: number } | undefined;
 
 function supabaseUrl(): string | undefined {
   return process.env["SUPABASE_URL"] || import.meta.env["VITE_SUPABASE_URL"];
-}
-
-export function serviceRoleConfigured(): boolean {
-  return !!supabaseUrl() && !!process.env["SUPABASE_SERVICE_ROLE_KEY"];
 }
 
 /** Base URL for an OpenAI-compatible provider ("…/v1" without a trailing slash). */
@@ -41,7 +28,7 @@ export function providerBaseUrl(provider: AiProviderId, custom: string | null): 
   return url ? url.replace(/\/+$/, "") : null;
 }
 
-async function readSaved(): Promise<Omit<ResolvedAi, "source"> | null> {
+async function readSaved(): Promise<SavedAi | null> {
   const url = supabaseUrl();
   const serviceKey = process.env["SUPABASE_SERVICE_ROLE_KEY"];
   if (!url || !serviceKey) return null;
@@ -62,25 +49,18 @@ async function readSaved(): Promise<Omit<ResolvedAi, "source"> | null> {
   });
   const { data, error } = await admin
     .from("chatbot_ai_credentials")
-    .select("provider, api_key, base_url, models")
+    .select("provider, api_key")
     .eq("id", true)
     .maybeSingle();
   if (error || !data) return null;
   const provider = (AI_PROVIDER_IDS as string[]).includes(data.provider)
     ? (data.provider as AiProviderId)
     : "anthropic";
-  const models = Array.isArray(data.models)
-    ? data.models.flatMap((m) =>
-        m && typeof m === "object" && !Array.isArray(m) && typeof m["id"] === "string"
-          ? [m["id"]]
-          : [],
-      )
-    : [];
-  return { provider, key: data.api_key, baseUrl: data.base_url ?? null, models };
+  return { provider, key: data.api_key };
 }
 
-/** The provider + key saved from the staff page, or null (none saved / server can't read it). */
-export async function savedAi(): Promise<Omit<ResolvedAi, "source"> | null> {
+/** The provider + key saved from the staff page, or null (none saved / no service role). */
+async function savedAi(): Promise<SavedAi | null> {
   if (cached && Date.now() - cached.at < CACHE_MS) return cached.saved;
   const saved = await readSaved();
   cached = { saved, at: Date.now() };
@@ -92,15 +72,11 @@ export function forgetSavedAi(): void {
   cached = undefined;
 }
 
-/** What the customer chatbot uses: the saved provider/key, else ANTHROPIC_API_KEY. */
-export async function resolveAi(): Promise<ResolvedAi | null> {
-  const saved = await savedAi();
-  if (saved) return { ...saved, source: "saved" };
-  const env = process.env["ANTHROPIC_API_KEY"];
-  return env ? { provider: "anthropic", key: env, baseUrl: null, models: [], source: "env" } : null;
-}
-
-/** An Anthropic key only (the staff assistant uses Anthropic tool calling). */
+/**
+ * An Anthropic key for the staff assistant (it uses Anthropic tool calling): a saved
+ * Anthropic key when the server has the service role (the assistant needs it anyway),
+ * else ANTHROPIC_API_KEY.
+ */
 export async function resolveAnthropicKey(): Promise<string | null> {
   const saved = await savedAi();
   if (saved?.provider === "anthropic") return saved.key;
@@ -167,33 +143,59 @@ export async function listAiModels(
       if (!check.ok) return providerError(check.status, await check.text().catch(() => ""));
     }
     const res = await fetch(`${base}/models`, { headers, signal: AbortSignal.timeout(20_000) });
-    const text = await res.text();
-    if (!res.ok) return providerError(res.status, text);
-    const body = JSON.parse(text) as {
-      data?: { id?: unknown; name?: unknown; display_name?: unknown; created?: unknown }[];
-    };
-    const models: AiModelOption[] = [];
-    for (const m of body.data ?? []) {
-      if (typeof m.id !== "string") continue;
-      // Gemini's OpenAI layer lists "models/gemini-…"; chat calls take the bare name.
-      const id = m.id.replace(/^models\//, "");
-      if (NOT_CHAT.test(id)) continue;
-      if (provider === "openai" && !/^(gpt-|o\d|chatgpt-)/.test(id)) continue;
-      if (provider === "gemini" && !/^gemini/.test(id)) continue;
-      const name =
-        (typeof m.display_name === "string" && m.display_name) ||
-        (typeof m.name === "string" && m.name) ||
-        id;
-      const created = typeof m.created === "number" ? new Date(m.created * 1000).toISOString() : "";
-      models.push({ id, name, created_at: created });
-      if (models.length >= 500) break;
-    }
-    models.sort((a, b) => b.created_at.localeCompare(a.created_at) || a.id.localeCompare(b.id));
-    return { models };
-  } catch (err) {
-    if (err instanceof SyntaxError) return { error: "ai_failed", status: 502 };
+    return parseModelList(provider, res.status, await res.text());
+  } catch {
     return { error: "ai_unreachable", status: 502 };
   }
+}
+
+/**
+ * The chat models in a provider's "list models" response, newest first. Used for a key
+ * checked here and for the saved key's list that the database fetched.
+ */
+export function parseModelList(
+  provider: AiProviderId,
+  status: number,
+  text: string,
+): { models: AiModelOption[] } | AiError {
+  if (status < 200 || status > 299) return providerError(status, text);
+  let body: {
+    data?: {
+      id?: unknown;
+      name?: unknown;
+      display_name?: unknown;
+      created?: unknown;
+      created_at?: unknown;
+    }[];
+  };
+  try {
+    body = JSON.parse(text) as typeof body;
+  } catch {
+    return { error: "ai_failed", status: 502 };
+  }
+  const models: AiModelOption[] = [];
+  for (const m of Array.isArray(body.data) ? body.data : []) {
+    if (typeof m.id !== "string") continue;
+    // Gemini's OpenAI layer lists "models/gemini-…"; chat calls take the bare name.
+    const id = m.id.replace(/^models\//, "");
+    if (provider === "anthropic" ? !id.startsWith("claude-") : NOT_CHAT.test(id)) continue;
+    if (provider === "openai" && !/^(gpt-|o\d|chatgpt-)/.test(id)) continue;
+    if (provider === "gemini" && !/^gemini/.test(id)) continue;
+    const name =
+      (typeof m.display_name === "string" && m.display_name) ||
+      (typeof m.name === "string" && m.name) ||
+      id;
+    const created =
+      typeof m.created_at === "string"
+        ? m.created_at
+        : typeof m.created === "number"
+          ? new Date(m.created * 1000).toISOString()
+          : "";
+    models.push({ id, name, created_at: created });
+    if (models.length >= 500) break;
+  }
+  models.sort((a, b) => b.created_at.localeCompare(a.created_at) || a.id.localeCompare(b.id));
+  return { models };
 }
 
 async function listAnthropicModels(key: string): Promise<{ models: AiModelOption[] } | AiError> {
@@ -219,43 +221,5 @@ async function listAnthropicModels(key: string): Promise<{ models: AiModelOption
       return { error: "ai_unreachable", status: 502 };
     if (err instanceof Anthropic.APIError) return { error: "ai_failed", status: 502 };
     throw err;
-  }
-}
-
-/**
- * One reply from an OpenAI-compatible provider. `system` goes first as a system message.
- * OpenAI's newer models take max_completion_tokens; the others take max_tokens.
- */
-export async function compatChat(
-  ai: ResolvedAi,
-  model: string,
-  system: string,
-  messages: { role: "user" | "assistant"; content: string }[],
-): Promise<{ text: string } | AiError> {
-  const base = providerBaseUrl(ai.provider, ai.baseUrl);
-  if (!base || (ai.provider === "custom" && customBaseUrlProblem(base)))
-    return { error: "invalid_base_url", status: 503 };
-  const limit = ai.provider === "openai" ? { max_completion_tokens: 4096 } : { max_tokens: 4096 };
-  try {
-    const res = await fetch(`${base}/chat/completions`, {
-      method: "POST",
-      headers: compatHeaders(ai.provider, ai.key),
-      body: JSON.stringify({
-        model,
-        messages: [{ role: "system", content: system }, ...messages],
-        ...limit,
-      }),
-      signal: AbortSignal.timeout(60_000),
-    });
-    const text = await res.text();
-    if (!res.ok) return providerError(res.status, text);
-    const body = JSON.parse(text) as {
-      choices?: { message?: { content?: unknown; refusal?: unknown } }[];
-    };
-    const content = body.choices?.[0]?.message?.content;
-    return { text: typeof content === "string" ? content.trim() : "" };
-  } catch (err) {
-    if (err instanceof SyntaxError) return { error: "ai_failed", status: 502 };
-    return { error: "ai_unreachable", status: 502 };
   }
 }

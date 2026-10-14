@@ -1226,6 +1226,13 @@ export type Database = {
         Returns: Json;
       };
       clear_chatbot_ai_key: { Args: never; Returns: Json };
+      chatbot_ai_available: { Args: never; Returns: boolean };
+      chatbot_ai_ask: {
+        Args: { _messages: Json; _site_url?: string; _slug: string };
+        Returns: Json;
+      };
+      chatbot_ai_poll: { Args: { _token: string }; Returns: Json };
+      chatbot_ai_models_start: { Args: never; Returns: Json };
       log_chatbot_exchange: {
         Args: {
           _answer: string;

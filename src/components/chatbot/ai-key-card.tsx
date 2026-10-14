@@ -44,12 +44,12 @@ type KeyInfo = {
   verified_at?: string;
   provider?: AiProviderId;
   base_url?: string | null;
+  /** The database can call the provider itself (pg_net is on). */
+  db_http?: boolean;
 };
 type KeyStatus = {
   info: KeyInfo | null;
   env_key: boolean;
-  service_role: boolean;
-  server_reads_saved: boolean;
   active_source: "saved" | "env" | null;
 };
 
@@ -65,6 +65,7 @@ const ERRORS: Record<string, string> = {
   ai_unreachable: "تعذّر الاتصال بالمزود، تأكد من الرابط وحاول مرة أخرى.",
   ai_failed: "رد المزود بخطأ، تأكد من المفتاح والرابط.",
   rate_limited: "طلبات كثيرة على المزود الآن، حاول بعد قليل.",
+  db_http_missing: "قاعدة البيانات غير جاهزة بعد: شغّل ملف SQL الأخير في Supabase ← SQL Editor.",
   unauthorized: "انتهت الجلسة، سجّل الدخول مرة أخرى.",
   supabase_not_configured: "إعدادات الاتصال بقاعدة البيانات غير مكتملة على الخادم.",
 };
@@ -82,9 +83,7 @@ async function fetchStatus(): Promise<KeyStatus> {
     return {
       info,
       env_key: false,
-      service_role: true,
-      server_reads_saved: !!info?.has_key,
-      active_source: info?.has_key ? "saved" : null,
+      active_source: info?.has_key && info.db_http ? "saved" : null,
     };
   }
   const res = await fetch("/api/chatbot-ai", { headers: await authHeaders() });
@@ -317,7 +316,7 @@ export function AiKeyCard({
           </div>
           <p className="text-xs text-muted-foreground">
             {isAdmin
-              ? "يُحفظ المفتاح في مكان محمي على الخادم ولا يظهر لأحد بعد الحفظ. نتحقق منه مع المزود ونعرض النماذج المتاحة لحسابك."
+              ? "يُحفظ المفتاح في مكان محمي داخل قاعدة البيانات ولا يظهر لأحد بعد الحفظ، وقاعدة البيانات هي التي تستخدمه للرد على العملاء. نتحقق منه مع المزود ونعرض النماذج المتاحة لحسابك."
               : "إضافة المفتاح أو تغييره متاحة للمدير فقط."}{" "}
             {meta.keysUrl && (
               <a
@@ -477,12 +476,9 @@ function StatusBanner({
     );
   if (info?.has_key)
     return (
-      <Banner tone="warning" title="المفتاح محفوظ، لكن الخادم لا يستطيع قراءته بعد">
-        أضف مرة واحدة في إعدادات الاستضافة (Vercel ← Settings ← Environment Variables) المتغير{" "}
-        <code dir="ltr" className="rounded bg-surface/60 px-1 font-mono">
-          SUPABASE_SERVICE_ROLE_KEY
-        </code>{" "}
-        وقيمته من Supabase ← Project Settings ← API Keys ← service_role، ثم أعد النشر (Redeploy).
+      <Banner tone="warning" title="المفتاح محفوظ، لكن قاعدة البيانات غير جاهزة لاستخدامه بعد">
+        شغّل ملف SQL الأخير مرة واحدة في Supabase ← SQL Editor (يفعّل الإضافة pg_net التي ترسل
+        الأسئلة للمزود من داخل قاعدة البيانات). لا يحتاج الموقع أي متغيرات في Vercel.
         {status.env_key
           ? " حتى ذلك الحين يُستخدم المفتاح الموجود في ANTHROPIC_API_KEY."
           : " حتى ذلك الحين يرد البوت من «الأسئلة والأجوبة» فقط."}

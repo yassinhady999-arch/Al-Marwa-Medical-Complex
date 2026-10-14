@@ -1908,7 +1908,10 @@ function mockAlignModel(defaultModel: unknown) {
 }
 
 function mockAiKeyRpc(fn: string, args: Row): { handled: boolean; value?: unknown } {
-  const info = () => (mockAiKey ? { has_key: true, ...mockAiKey } : { has_key: false, models: [] });
+  const info = () => ({
+    ...(mockAiKey ? { has_key: true, ...mockAiKey } : { has_key: false, models: [] }),
+    db_http: true,
+  });
   if (fn === "get_chatbot_ai_key_info") return { handled: true, value: info() };
   if (fn === "set_chatbot_ai_key") {
     const key = String(args["_key"] ?? "").trim();

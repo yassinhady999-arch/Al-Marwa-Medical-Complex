@@ -3,7 +3,10 @@ import { z } from "zod";
 import { json } from "@/lib/n8n.server";
 import { parsePublicChatbot } from "@/lib/chatbot";
 import { answerCustomer, chatbotAiConfigured, type CustomerMessage } from "@/lib/chatbot.server";
+import { askDatabaseAi } from "@/lib/ai-database.server";
 import { getPublicSupabase } from "@/lib/public-supabase.server";
+
+type PublicSupabase = ReturnType<typeof getPublicSupabase>;
 
 const bodySchema = z.object({
   slug: z.string().regex(/^[a-z0-9-]{6,64}$/i),
@@ -31,11 +34,60 @@ function toTurns(messages: CustomerMessage[]): CustomerMessage[] {
   return turns;
 }
 
+/** The reply from ANTHROPIC_API_KEY on the hosting (when no key is saved in the database). */
+async function answerWithHostKey(
+  supabase: PublicSupabase,
+  slug: string,
+  turns: CustomerMessage[],
+  origin: string,
+): Promise<{ answer: string } | { error: string; status: number }> {
+  if (!process.env["ANTHROPIC_API_KEY"]) return { error: "ai_not_configured", status: 503 };
+
+  // Counts against today's cap before spending anything on the model.
+  const { data: quota, error: quotaError } = await supabase.rpc("consume_chatbot_ai_quota", {
+    _slug: slug,
+  });
+  if (quotaError) return { error: "bot_unavailable", status: 502 };
+  const q = (quota ?? {}) as {
+    allowed?: boolean;
+    reason?: string;
+    model?: string;
+    instructions?: string;
+  };
+  if (!q.allowed) {
+    return {
+      error: q.reason ?? "bot_unavailable",
+      status: q.reason === "quota_exceeded" ? 429 : 403,
+    };
+  }
+
+  const { data: botJson, error: botError } = await supabase.rpc("get_public_chatbot", {
+    _slug: slug,
+  });
+  const bot = botError ? null : parsePublicChatbot(botJson);
+  if (!bot) return { error: "bot_unavailable", status: 404 };
+
+  return answerCustomer(
+    bot,
+    { model: q.model ?? "", instructions: q.instructions ?? "" },
+    turns,
+    bot.booking_slug ? `${origin}/book/${bot.booking_slug}` : null,
+  );
+}
+
+function publicSupabaseOrNull(): PublicSupabase | null {
+  try {
+    return getPublicSupabase();
+  } catch {
+    return null;
+  }
+}
+
 export const Route = createFileRoute("/api/public/chatbot")({
   server: {
     handlers: {
-      // Lets the staff page show whether AI answers are switched on for this deployment.
-      GET: async () => json({ ai_configured: await chatbotAiConfigured() }),
+      // Lets the staff page show whether AI answers are switched on.
+      GET: async () => json({ ai_configured: await chatbotAiConfigured(publicSupabaseOrNull()) }),
 
       POST: async ({ request }) => {
         const raw = await request.json().catch(() => null);
@@ -46,46 +98,15 @@ export const Route = createFileRoute("/api/public/chatbot")({
         const turns = toTurns(messages);
         const question = turns[turns.length - 1];
         if (!question || question.role !== "user") return json({ error: "invalid_payload" }, 400);
-        if (!(await chatbotAiConfigured())) return json({ error: "ai_not_configured" }, 503);
 
-        let supabase;
-        try {
-          supabase = getPublicSupabase();
-        } catch {
-          return json({ error: "supabase_not_configured" }, 503);
-        }
+        const supabase = publicSupabaseOrNull();
+        if (!supabase) return json({ error: "supabase_not_configured" }, 503);
 
-        // Counts against today's cap before spending anything on the model.
-        const { data: quota, error: quotaError } = await supabase.rpc("consume_chatbot_ai_quota", {
-          _slug: slug,
-        });
-        if (quotaError) return json({ error: "bot_unavailable" }, 502);
-        const q = (quota ?? {}) as {
-          allowed?: boolean;
-          reason?: string;
-          model?: string;
-          instructions?: string;
-        };
-        if (!q.allowed) {
-          return json(
-            { error: q.reason ?? "bot_unavailable" },
-            q.reason === "quota_exceeded" ? 429 : 403,
-          );
-        }
-
-        const { data: botJson, error: botError } = await supabase.rpc("get_public_chatbot", {
-          _slug: slug,
-        });
-        const bot = botError ? null : parsePublicChatbot(botJson);
-        if (!bot) return json({ error: "bot_unavailable" }, 404);
-
+        // The key saved in «تدريب الشات بوت»: the database asks the provider itself.
         const origin = new URL(request.url).origin;
-        const result = await answerCustomer(
-          bot,
-          { model: q.model ?? "", instructions: q.instructions ?? "" },
-          turns,
-          bot.booking_slug ? `${origin}/book/${bot.booking_slug}` : null,
-        );
+        const result =
+          (await askDatabaseAi(supabase, slug, turns, origin)) ??
+          (await answerWithHostKey(supabase, slug, turns, origin));
         if ("error" in result) return json({ error: result.error }, result.status);
 
         await supabase.rpc("log_chatbot_exchange", {
