@@ -370,6 +370,7 @@ const MOCK: Record<string, unknown[]> = {
       description: "إزالة الجير وتلميع",
       duration_minutes: 30,
       price: 120,
+      price_from: true,
       is_active: true,
       specialties: { name: "طب الأسنان" },
       specialty_id: "sp1",
@@ -685,7 +686,8 @@ const MOCK: Record<string, unknown[]> = {
       conversation_id: "c1",
       direction: "outbound",
       sender_type: "ai",
-      content: "وعليكم السلام 👋 أهلاً بك في مجمع المروة السيل الطبي. تفضّل باسمك الكامل ورقم جوالك.",
+      content:
+        "وعليكم السلام 👋 أهلاً بك في مجمع المروة السيل الطبي. تفضّل باسمك الكامل ورقم جوالك.",
       created_at: stamp(39),
     },
     {
@@ -1572,9 +1574,11 @@ function formScope(form: Row) {
   const ids = (k: string) => (Array.isArray(settings[k]) ? (settings[k] as unknown[]) : []);
   const allowSpec = (id: unknown) =>
     ids("specialty_ids").length === 0 || (id != null && ids("specialty_ids").includes(id));
+  // Bookable = active with a weekly schedule; hidden ones are booked but never listed by name.
   const doctors = rowsOf("doctors").filter(
     (d) =>
       d["status"] === "active" &&
+      ((d["doctor_schedules"] ?? []) as Row[]).some((s) => s["is_active"] !== false) &&
       (ids("specialty_ids").length === 0 || mockDepts(d).some((id) => allowSpec(id))),
   );
   const hasDoctor = (id: unknown) => doctors.some((d) => mockDepts(d).includes(id));
@@ -1624,14 +1628,17 @@ function mockPublicRpc(fn: string, args: Row): { handled: boolean; value?: unkno
           specialty_id: v["specialty_id"] ?? null,
           duration_minutes: v["duration_minutes"],
           price: v["price"],
+          price_from: v["price_from"] === true,
           description: v["description"] ?? null,
         })),
-        doctors: doctors.map((d) => ({
-          id: d["id"],
-          name: d["name"],
-          specialty_id: d["specialty_id"] ?? null,
-          specialty_ids: mockDepts(d),
-        })),
+        doctors: doctors
+          .filter((d) => d["hide_name"] !== true)
+          .map((d) => ({
+            id: d["id"],
+            name: d["name"],
+            specialty_id: d["specialty_id"] ?? null,
+            specialty_ids: mockDepts(d),
+          })),
       },
     };
   }
@@ -1680,7 +1687,10 @@ function mockPublicRpc(fn: string, args: Row): { handled: boolean; value?: unkno
       date: a["appointment_date"],
       start_time: a["start_time"],
       end_time: a["end_time"],
-      doctor_name: (a["doctors"] as Row | null)?.["name"] ?? null,
+      doctor_name:
+        rowsOf("doctors").find((d) => d["id"] === a["doctor_id"])?.["hide_name"] === true
+          ? null
+          : ((a["doctors"] as Row | null)?.["name"] ?? null),
       service_name: (a["services"] as Row | null)?.["name"] ?? null,
       success_message: settings["success_message"] ?? null,
       duplicate,
@@ -1803,12 +1813,13 @@ function mockPublicRpc(fn: string, args: Row): { handled: boolean; value?: unkno
           .map((v) => ({
             name: v["name"],
             price: v["price"],
+            price_from: v["price_from"] === true,
             duration_minutes: v["duration_minutes"],
             specialty_id: v["specialty_id"] ?? null,
             description: v["description"] ?? null,
           })),
         doctors: rowsOf("doctors")
-          .filter((d) => d["status"] === "active")
+          .filter((d) => d["status"] === "active" && d["hide_name"] !== true)
           .map((d) => ({
             name: d["name"],
             specialty_id: d["specialty_id"] ?? null,
@@ -1861,6 +1872,7 @@ function mockSaveDoctor(args: Row): string {
     email: String(p["email"] ?? "").trim() || null,
     bio: String(p["bio"] ?? "").trim() || null,
     status: p["status"] === "inactive" ? "inactive" : "active",
+    hide_name: p["hide_name"] === true,
     specialty_id: main,
     specialties: main
       ? { name: rowsOf("specialties").find((s) => s["id"] === main)?.["name"] }

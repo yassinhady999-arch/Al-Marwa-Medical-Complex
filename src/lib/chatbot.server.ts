@@ -69,7 +69,7 @@ export function buildSystemPrompt(
     "الخدمات_والأسعار",
     bot.services.map(
       (s) =>
-        `- ${s.name}${specialty(s.specialty_id) ? ` (${specialty(s.specialty_id)})` : ""}: ${s.price > 0 ? `${s.price} ر.س` : "السعر عند الاستفسار (غير محدد، لا تذكر رقمًا)"}${s.description ? ` — ${s.description}` : ""}`,
+        `- ${s.name}${specialty(s.specialty_id) ? ` (${specialty(s.specialty_id)})` : ""}: ${s.price > 0 ? `${s.price_from ? "يبدأ من " : ""}${s.price} ر.س` : "السعر عند الاستفسار (غير محدد، لا تذكر رقمًا)"}${s.description ? ` — ${s.description}` : ""}`,
     ),
   );
   const doctors = section(

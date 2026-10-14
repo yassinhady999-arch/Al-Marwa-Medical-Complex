@@ -2,7 +2,7 @@ import { createFileRoute } from "@tanstack/react-router";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useId, useState } from "react";
 import { toast } from "sonner";
-import { CalendarX2, Copy, Pencil, Phone, Stethoscope } from "lucide-react";
+import { CalendarX2, Copy, EyeOff, Pencil, Phone, Stethoscope } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { AppShell } from "@/components/layout/AppShell";
 import { Button } from "@/components/ui/button";
@@ -65,6 +65,7 @@ type Doctor = {
   email: string | null;
   status: string;
   bio: string | null;
+  hide_name: boolean;
   departments: string[];
   schedules: Schedule[];
 };
@@ -79,7 +80,7 @@ function DoctorsPage() {
       const { data, error } = await supabase
         .from("doctors")
         .select(
-          `id, name, phone, email, status, bio, specialty_id, ${DOCTOR_DEPARTMENTS}, doctor_schedules(day_of_week, start_time, end_time, break_start, break_end, is_active)`,
+          `id, name, phone, email, status, bio, hide_name, specialty_id, ${DOCTOR_DEPARTMENTS}, doctor_schedules(day_of_week, start_time, end_time, break_start, break_end, is_active)`,
         )
         .order("name");
       if (error) throw error;
@@ -90,6 +91,7 @@ function DoctorsPage() {
         email: d.email,
         status: d.status,
         bio: d.bio,
+        hide_name: d.hide_name,
         departments: departmentIds(d),
         schedules: ((d.doctor_schedules ?? []) as Schedule[])
           .filter((s) => s.is_active)
@@ -153,6 +155,12 @@ function DoctorsPage() {
                     </p>
                     {d.bio && (
                       <p className="mt-1 line-clamp-2 text-xs text-muted-foreground">{d.bio}</p>
+                    )}
+                    {d.hide_name && (
+                      <p className="mt-1 flex items-center gap-1.5 text-[11px] text-muted-foreground">
+                        <EyeOff className="size-3" />
+                        الاسم مخفي عن العملاء (يظهر باسم القسم فقط)
+                      </p>
                     )}
                     {d.phone && (
                       <p
@@ -288,6 +296,7 @@ function DoctorDialog({
     phone: doctor?.phone ?? "",
     email: doctor?.email ?? "",
     active: (doctor?.status ?? "active") === "active",
+    hide_name: doctor?.hide_name ?? false,
   });
   // Order matters: the first department is the doctor's main one.
   const [departments, setDepartments] = useState<string[]>(doctor?.departments ?? []);
@@ -328,6 +337,7 @@ function DoctorDialog({
           phone: form.phone.trim(),
           email: form.email.trim(),
           status: form.active ? "active" : "inactive",
+          hide_name: form.hide_name,
           specialty_ids: departments,
           schedules: days.flatMap((d, day) =>
             d.on
@@ -421,6 +431,19 @@ function DoctorDialog({
                 onCheckedChange={(active) => setForm({ ...form, active })}
               />
               <Label htmlFor={`${uid}-active`}>نشط ويستقبل حجوزات</Label>
+            </div>
+            <div className="flex items-start gap-2 sm:col-span-2">
+              <Switch
+                id={`${uid}-hide`}
+                checked={form.hide_name}
+                onCheckedChange={(hide_name) => setForm({ ...form, hide_name })}
+              />
+              <Label htmlFor={`${uid}-hide`} className="leading-snug">
+                إخفاء الاسم عن العملاء
+                <span className="block text-[11px] font-normal text-muted-foreground">
+                  لا يظهر اسمه في الشات بوت ولا في نموذج الحجز، ويُحجز باسم القسم فقط (مثل الحجامة).
+                </span>
+              </Label>
             </div>
           </div>
 

@@ -55,6 +55,8 @@ export type PublicChatbot = {
   services: {
     name: string;
     price: number;
+    /** The price is a starting price («يبدأ من»). */
+    price_from?: boolean | undefined;
     duration_minutes: number;
     specialty_id: string | null;
     description: string | null;
@@ -295,10 +297,10 @@ export function parsePublicChatbot(json: Json | null): PublicChatbot | null {
     booking_slug: typeof r["booking_slug"] === "string" ? r["booking_slug"] : null,
     clinic: (r["clinic"] as PublicChatbot["clinic"]) ?? null,
     specialties: list(r["specialties"]),
-    services: list<PublicChatbot["services"][number]>(r["services"]).map((s) => ({
-      ...s,
-      price: Number(s.price ?? 0),
-    })),
+    services: list<PublicChatbot["services"][number]>(r["services"])
+      .map((s) => ({ ...s, price: Number(s.price ?? 0) }))
+      // "9 كاسات" before "12 كاسة": compare the numbers inside names as numbers.
+      .sort((a, b) => a.name.localeCompare(b.name, "ar", { numeric: true })),
     doctors: list(r["doctors"]),
     knowledge: list(r["knowledge"]),
   };
@@ -350,15 +352,15 @@ export function renderNodeReply(node: MenuNode, bot: PublicChatbot, origin: stri
 
   switch (node.kind) {
     case "services": {
-      const services = bot.services.filter(
-        (s) => !node.specialty_id || s.specialty_id === node.specialty_id,
-      );
+      const services = bot.services
+        .filter((s) => !node.specialty_id || s.specialty_id === node.specialty_id)
+        .sort((a, b) => a.name.localeCompare(b.name, "ar", { numeric: true }));
       if (services.length === 0)
         return { text: join(intro, "لا توجد خدمات معروضة حاليًا."), links: [] };
       const groups = new Map<string, string[]>();
       for (const s of services) {
         const key = specialtyName(s.specialty_id) ?? "خدمات عامة";
-        const line = `• ${s.name} — ${priceLabel(s.price)}`;
+        const line = `• ${s.name} — ${priceLabel(s.price, s.price_from)}`;
         groups.set(key, [...(groups.get(key) ?? []), line]);
       }
       const body =
@@ -419,7 +421,7 @@ export function renderNodeReply(node: MenuNode, bot: PublicChatbot, origin: stri
       if (bot.booking_slug) {
         return {
           text: intro || "احجز موعدك من الرابط التالي:",
-          links: [{ label: "احجز موعدك الآن", url: `${origin}/book/${bot.booking_slug}` }],
+          links: [{ label: "احجز الآن", url: `${origin}/book/${bot.booking_slug}` }],
         };
       }
       return {
@@ -453,8 +455,13 @@ const STOPWORDS = new Set(
 const SYNONYMS: [string, string[]][] = [
   ["سعر", ["سعر", "اسعار", "تكلفه", "تكاليف", "بكم", "رسوم", "فلوس", "price", "cost"]],
   ["موقع", ["موقع", "مكان", "عنوان", "وين", "فين", "اين", "لوكيشن", "location", "where"]],
-  ["دوام", ["دوام", "تفتح", "تقفل", "تسكر", "مفتوح", "ساعات", "اوقات", "hours", "open"]],
-  ["حجز", ["حجز", "احجز", "موعد", "مواعيد", "book", "appointment"]],
+  // "مواعيد" (plural) is nearly always asking for hours ("مواعيد الدكتور"); "موعد" is a booking.
+  ["دوام", ["دوام", "تفتح", "تقفل", "تسكر", "مفتوح", "ساعات", "اوقات", "مواعيد", "hours", "open"]],
+  ["حجز", ["حجز", "احجز", "موعد", "book", "appointment"]],
+  [
+    "تواصل",
+    ["تواصل", "رقم", "ارقام", "جوال", "هاتف", "تلفون", "اتصال", "واتس", "whatsapp", "phone"],
+  ],
   ["الغاء", ["الغاء", "الغي", "كنسل", "cancel"]],
   ["تامين", ["تامين", "insurance"]],
   ["دكتور", ["دكتور", "دكتوره", "دكاتره", "دكاتر", "طبيب", "طبيبه", "اطباء", "doctor"]],

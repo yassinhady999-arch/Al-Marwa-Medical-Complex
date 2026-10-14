@@ -196,13 +196,14 @@ async function fetchLiveData() {
     supabase.from("specialties").select("id, name").eq("is_active", true).order("name"),
     supabase
       .from("services")
-      .select("name, price, duration_minutes, specialty_id, description")
+      .select("name, price, price_from, duration_minutes, specialty_id, description")
       .eq("is_active", true)
       .order("name"),
     supabase
       .from("doctors")
       .select(`name, specialty_id, bio, ${DOCTOR_DEPARTMENTS}`)
       .eq("status", "active")
+      .eq("hide_name", false)
       .order("name"),
     supabase
       .from("clinic_settings")

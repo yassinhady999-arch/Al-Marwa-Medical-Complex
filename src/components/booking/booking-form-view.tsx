@@ -328,7 +328,7 @@ export function BookingFormView({
                     {services.map((s) => (
                       <SelectItem key={s.id} value={s.id}>
                         {s.name} · {s.duration_minutes} د
-                        {settings.show_prices ? ` · ${priceLabel(s.price)}` : ""}
+                        {settings.show_prices ? ` · ${priceLabel(s.price, s.price_from)}` : ""}
                       </SelectItem>
                     ))}
                   </SelectContent>

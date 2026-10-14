@@ -101,12 +101,14 @@ async function fetchRefs() {
     supabase.from("specialties").select("id, name").eq("is_active", true).order("name"),
     supabase
       .from("services")
-      .select("id, name, specialty_id, duration_minutes, price, description")
+      .select("id, name, specialty_id, duration_minutes, price, price_from, description")
       .eq("is_active", true)
       .order("name"),
     supabase
       .from("doctors")
-      .select(`id, name, specialty_id, ${DOCTOR_DEPARTMENTS}`)
+      .select(
+        `id, name, specialty_id, hide_name, ${DOCTOR_DEPARTMENTS}, doctor_schedules(is_active)`,
+      )
       .eq("status", "active")
       .order("name"),
     supabase
@@ -118,9 +120,10 @@ async function fetchRefs() {
   return {
     specialties: specialties.data ?? [],
     services: (services.data ?? []).map((s) => ({ ...s, price: Number(s.price ?? 0) })),
-    doctors: (doctors.data ?? []).map(({ doctor_specialties, ...d }) => ({
+    doctors: (doctors.data ?? []).map(({ doctor_specialties, doctor_schedules, ...d }) => ({
       ...d,
       specialty_ids: departmentIds({ ...d, doctor_specialties }),
+      scheduled: (doctor_schedules ?? []).some((s) => s.is_active),
     })),
     clinic: clinic.data
       ? {
@@ -201,10 +204,21 @@ function toPreview(draft: Draft, refs: Refs, form: FormRecord): PublicBookingFor
   const { specialty_ids, service_ids } = draft.settings;
   const allowSpecialty = (id: string | null) =>
     specialty_ids.length === 0 || (id !== null && specialty_ids.includes(id));
-  const doctors = refs.doctors.filter(
-    (d) => specialty_ids.length === 0 || d.specialty_ids.some((id) => allowSpecialty(id)),
+  // Only doctors with a weekly schedule can be booked; hidden ones are booked but never named.
+  const bookable = refs.doctors.filter(
+    (d) =>
+      d.scheduled &&
+      (specialty_ids.length === 0 || d.specialty_ids.some((id) => allowSpecialty(id))),
   );
-  const hasDoctor = (id: string) => doctors.some((d) => d.specialty_ids.includes(id));
+  const hasDoctor = (id: string) => bookable.some((d) => d.specialty_ids.includes(id));
+  const doctors = bookable
+    .filter((d) => !d.hide_name)
+    .map(({ id, name, specialty_id, specialty_ids }) => ({
+      id,
+      name,
+      specialty_id,
+      specialty_ids,
+    }));
   return {
     id: form.id,
     slug: form.slug,

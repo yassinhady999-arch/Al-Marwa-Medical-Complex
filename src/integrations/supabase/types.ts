@@ -701,6 +701,7 @@ export type Database = {
           bio: string | null;
           created_at: string;
           email: string | null;
+          hide_name: boolean;
           id: string;
           name: string;
           phone: string | null;
@@ -714,6 +715,7 @@ export type Database = {
           bio?: string | null;
           created_at?: string;
           email?: string | null;
+          hide_name?: boolean;
           id?: string;
           name: string;
           phone?: string | null;
@@ -727,6 +729,7 @@ export type Database = {
           bio?: string | null;
           created_at?: string;
           email?: string | null;
+          hide_name?: boolean;
           id?: string;
           name?: string;
           phone?: string | null;
@@ -978,6 +981,7 @@ export type Database = {
           id: string;
           is_active: boolean;
           name: string;
+          price_from: boolean;
           price: number;
           specialty_id: string | null;
           updated_at: string;
@@ -989,6 +993,7 @@ export type Database = {
           id?: string;
           is_active?: boolean;
           name: string;
+          price_from?: boolean;
           price?: number;
           specialty_id?: string | null;
           updated_at?: string;
@@ -1000,6 +1005,7 @@ export type Database = {
           id?: string;
           is_active?: boolean;
           name?: string;
+          price_from?: boolean;
           price?: number;
           specialty_id?: string | null;
           updated_at?: string;

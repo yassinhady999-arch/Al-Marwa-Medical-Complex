@@ -195,9 +195,13 @@ export function currency(value?: number | null): string {
   return `${formatNumber(value)} ر.س`;
 }
 
-/** What customers see for a service price: 0 means the clinic hasn't fixed one yet. */
-export function priceLabel(value?: number | null): string {
-  return Number(value ?? 0) > 0 ? currency(value) : "السعر عند الاستفسار";
+/**
+ * What customers see for a service price: 0 means the clinic hasn't fixed one yet, and
+ * `from` marks a starting price («يبدأ من 99 ر.س»).
+ */
+export function priceLabel(value?: number | null, from?: boolean | null): string {
+  if (Number(value ?? 0) <= 0) return "السعر عند الاستفسار";
+  return from ? `يبدأ من ${currency(value)}` : currency(value);
 }
 
 /** Embed for a doctors select that returns every department the doctor works in. */

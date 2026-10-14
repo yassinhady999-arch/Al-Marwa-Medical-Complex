@@ -228,6 +228,8 @@ export type PublicService = {
   specialty_id: string | null;
   duration_minutes: number;
   price: number;
+  /** The price is a starting price («يبدأ من»). */
+  price_from?: boolean;
   description: string | null;
 };
 
@@ -265,10 +267,10 @@ export function parsePublicForm(json: Json | null): PublicBookingForm | null {
     settings: parseSettings(r["settings"]),
     clinic: (r["clinic"] as PublicBookingForm["clinic"]) ?? null,
     specialties: list(r["specialties"]),
-    services: list<PublicService>(r["services"]).map((s) => ({
-      ...s,
-      price: Number(s.price ?? 0),
-    })),
+    services: list<PublicService>(r["services"])
+      .map((s) => ({ ...s, price: Number(s.price ?? 0) }))
+      // "9 كاسات" before "12 كاسة": compare the numbers inside names as numbers.
+      .sort((a, b) => a.name.localeCompare(b.name, "ar", { numeric: true })),
     doctors: list(r["doctors"]),
   };
 }

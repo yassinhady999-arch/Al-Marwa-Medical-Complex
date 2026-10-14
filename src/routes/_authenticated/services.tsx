@@ -51,6 +51,7 @@ type Service = {
   description: string | null;
   duration_minutes: number;
   price: number;
+  price_from: boolean;
   is_active: boolean;
   specialty_id: string | null;
   specialties: { name: string } | null;
@@ -68,7 +69,7 @@ function ServicesPage() {
       const { data, error } = await supabase
         .from("services")
         .select(
-          "id, name, description, duration_minutes, price, is_active, specialty_id, specialties(name)",
+          "id, name, description, duration_minutes, price, price_from, is_active, specialty_id, specialties(name)",
         )
         .order("name");
       if (error) throw error;
@@ -152,7 +153,7 @@ function ServicesPage() {
                         }
                       >
                         <Wallet className="size-4 text-muted-foreground" />
-                        {priceLabel(s.price)}
+                        {priceLabel(s.price, s.price_from)}
                       </span>
                       {me?.isAdmin && (
                         <Button
@@ -193,6 +194,7 @@ function ServiceDialog({ service, onClose }: { service: Service | null; onClose:
     specialty_id: service?.specialty_id ?? "",
     duration_minutes: String(service?.duration_minutes ?? 30),
     price: String(service?.price ?? 0),
+    price_from: service?.price_from ?? false,
     description: service?.description ?? "",
     is_active: service?.is_active ?? true,
   });
@@ -227,6 +229,7 @@ function ServiceDialog({ service, onClose }: { service: Service | null; onClose:
         specialty_id: form.specialty_id || null,
         duration_minutes: duration,
         price,
+        price_from: price > 0 && form.price_from,
         description: form.description.trim() || null,
         is_active: form.is_active,
       };
@@ -319,6 +322,15 @@ function ServiceDialog({ service, onClose }: { service: Service | null; onClose:
           <p className="text-[11px] text-muted-foreground">
             اترك السعر 0 ليظهر للعملاء «السعر عند الاستفسار». المدة تحدد طول الموعد عند الحجز.
           </p>
+          <div className="flex items-center gap-2">
+            <Switch
+              id={`${uid}-from`}
+              checked={form.price_from}
+              disabled={!(price > 0)}
+              onCheckedChange={(price_from) => setForm({ ...form, price_from })}
+            />
+            <Label htmlFor={`${uid}-from`}>السعر يبدأ من (يظهر «يبدأ من» قبل السعر)</Label>
+          </div>
           <div className="grid gap-1.5">
             <Label htmlFor={`${uid}-desc`}>الوصف</Label>
             <Textarea
