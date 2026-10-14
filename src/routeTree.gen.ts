@@ -29,6 +29,7 @@ import { Route as AuthenticatedServicesRouteImport } from './routes/_authenticat
 import { Route as AuthenticatedSettingsRouteImport } from './routes/_authenticated/settings'
 import { Route as AuthenticatedSpecialtiesRouteImport } from './routes/_authenticated/specialties'
 import { Route as AuthenticatedStaffRouteImport } from './routes/_authenticated/staff'
+import { Route as ApiChatbotAiRouteImport } from './routes/api/chatbot-ai'
 import { Route as BookSlugRouteImport } from './routes/book.$slug'
 import { Route as ChatSlugRouteImport } from './routes/chat.$slug'
 import { Route as AuthenticatedFormsIndexRouteImport } from './routes/_authenticated/forms.index'
@@ -145,6 +146,11 @@ const AuthenticatedStaffRoute = AuthenticatedStaffRouteImport.update({
   path: '/staff',
   getParentRoute: () => AuthenticatedRouteRoute,
 } as any)
+const ApiChatbotAiRoute = ApiChatbotAiRouteImport.update({
+  id: '/api/chatbot-ai',
+  path: '/api/chatbot-ai',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const BookSlugRoute = BookSlugRouteImport.update({
   id: '/book/$slug',
   path: '/book/$slug',
@@ -227,6 +233,7 @@ export interface FileRoutesByFullPath {
   '/settings': typeof AuthenticatedSettingsRoute
   '/specialties': typeof AuthenticatedSpecialtiesRoute
   '/staff': typeof AuthenticatedStaffRoute
+  '/api/chatbot-ai': typeof ApiChatbotAiRoute
   '/book/$slug': typeof BookSlugRoute
   '/chat/$slug': typeof ChatSlugRoute
   '/forms/$formId': typeof AuthenticatedFormsFormIdRoute
@@ -259,6 +266,7 @@ export interface FileRoutesByTo {
   '/settings': typeof AuthenticatedSettingsRoute
   '/specialties': typeof AuthenticatedSpecialtiesRoute
   '/staff': typeof AuthenticatedStaffRoute
+  '/api/chatbot-ai': typeof ApiChatbotAiRoute
   '/book/$slug': typeof BookSlugRoute
   '/chat/$slug': typeof ChatSlugRoute
   '/forms/$formId': typeof AuthenticatedFormsFormIdRoute
@@ -293,6 +301,7 @@ export interface FileRoutesById {
   '/_authenticated/settings': typeof AuthenticatedSettingsRoute
   '/_authenticated/specialties': typeof AuthenticatedSpecialtiesRoute
   '/_authenticated/staff': typeof AuthenticatedStaffRoute
+  '/api/chatbot-ai': typeof ApiChatbotAiRoute
   '/book/$slug': typeof BookSlugRoute
   '/chat/$slug': typeof ChatSlugRoute
   '/_authenticated/forms/$formId': typeof AuthenticatedFormsFormIdRoute
@@ -327,6 +336,7 @@ export interface FileRouteTypes {
     | '/settings'
     | '/specialties'
     | '/staff'
+    | '/api/chatbot-ai'
     | '/book/$slug'
     | '/chat/$slug'
     | '/forms/$formId'
@@ -359,6 +369,7 @@ export interface FileRouteTypes {
     | '/settings'
     | '/specialties'
     | '/staff'
+    | '/api/chatbot-ai'
     | '/book/$slug'
     | '/chat/$slug'
     | '/forms/$formId'
@@ -392,6 +403,7 @@ export interface FileRouteTypes {
     | '/_authenticated/settings'
     | '/_authenticated/specialties'
     | '/_authenticated/staff'
+    | '/api/chatbot-ai'
     | '/book/$slug'
     | '/chat/$slug'
     | '/_authenticated/forms/$formId'
@@ -410,6 +422,7 @@ export interface RootRouteChildren {
   AuthenticatedRouteRoute: typeof AuthenticatedRouteRouteWithChildren
   AuthRoute: typeof AuthRoute
   ResetPasswordRoute: typeof ResetPasswordRoute
+  ApiChatbotAiRoute: typeof ApiChatbotAiRoute
   BookSlugRoute: typeof BookSlugRoute
   ChatSlugRoute: typeof ChatSlugRoute
   ApiAssistantChatRoute: typeof ApiAssistantChatRoute
@@ -563,6 +576,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthenticatedStaffRouteImport
       parentRoute: typeof AuthenticatedRouteRoute
     }
+    '/api/chatbot-ai': {
+      id: '/api/chatbot-ai'
+      path: '/api/chatbot-ai'
+      fullPath: '/api/chatbot-ai'
+      preLoaderRoute: typeof ApiChatbotAiRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/book/$slug': {
       id: '/book/$slug'
       path: '/book/$slug'
@@ -693,6 +713,7 @@ const rootRouteChildren: RootRouteChildren = {
   AuthenticatedRouteRoute: AuthenticatedRouteRouteWithChildren,
   AuthRoute: AuthRoute,
   ResetPasswordRoute: ResetPasswordRoute,
+  ApiChatbotAiRoute: ApiChatbotAiRoute,
   BookSlugRoute: BookSlugRoute,
   ChatSlugRoute: ChatSlugRoute,
   ApiAssistantChatRoute: ApiAssistantChatRoute,

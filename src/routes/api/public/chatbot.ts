@@ -35,7 +35,7 @@ export const Route = createFileRoute("/api/public/chatbot")({
   server: {
     handlers: {
       // Lets the staff page show whether AI answers are switched on for this deployment.
-      GET: async () => json({ ai_configured: chatbotAiConfigured() }),
+      GET: async () => json({ ai_configured: await chatbotAiConfigured() }),
 
       POST: async ({ request }) => {
         const raw = await request.json().catch(() => null);
@@ -46,7 +46,7 @@ export const Route = createFileRoute("/api/public/chatbot")({
         const turns = toTurns(messages);
         const question = turns[turns.length - 1];
         if (!question || question.role !== "user") return json({ error: "invalid_payload" }, 400);
-        if (!chatbotAiConfigured()) return json({ error: "ai_not_configured" }, 503);
+        if (!(await chatbotAiConfigured())) return json({ error: "ai_not_configured" }, 503);
 
         let supabase;
         try {

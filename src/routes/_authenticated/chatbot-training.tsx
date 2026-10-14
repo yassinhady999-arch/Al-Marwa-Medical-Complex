@@ -63,6 +63,7 @@ import { SectionCard } from "@/components/app/section-card";
 import { ToneBadge } from "@/components/app/status-badge";
 import { ShareLink } from "@/components/app/share-link";
 import { ChatbotWidget, type AskAi } from "@/components/chatbot/chatbot-widget";
+import { AiKeyCard } from "@/components/chatbot/ai-key-card";
 import { MenuEditor } from "@/components/chatbot/menu-editor";
 import { cn, copyText } from "@/lib/utils";
 import {
@@ -74,7 +75,6 @@ import {
   type Tone,
 } from "@/lib/clinic";
 import {
-  AI_MODELS,
   CHATBOT_MODES,
   KNOWLEDGE_CATEGORIES,
   STARTER_MENU,
@@ -540,12 +540,7 @@ function ChatbotManager({ settings, canWrite }: { settings: Settings; canWrite: 
         <TabsContent value="settings" className="mt-4">
           <div className="grid gap-5 xl:grid-cols-[minmax(0,1fr)_380px]">
             <fieldset disabled={!canWrite} className="min-w-0">
-              <SettingsPanel
-                draft={draft}
-                onChange={update}
-                aiConfigured={aiConfigured}
-                forms={forms}
-              />
+              <SettingsPanel draft={draft} onChange={update} forms={forms} />
             </fieldset>
             {preview}
           </div>
@@ -593,12 +588,10 @@ function previewAskAi(slug: string): AskAi {
 function SettingsPanel({
   draft,
   onChange,
-  aiConfigured,
   forms,
 }: {
   draft: BotDraft;
   onChange: (patch: Partial<BotDraft>) => void;
-  aiConfigured: boolean;
   forms: { id: string; title: string; is_active: boolean }[];
 }) {
   const uid = useId();
@@ -672,80 +665,51 @@ function SettingsPanel({
         </div>
       </SectionCard>
 
-      {draft.mode !== "menu" && (
-        <SectionCard icon={Sparkles} title="الذكاء الاصطناعي">
-          <div className="grid gap-4">
-            {aiConfigured ? (
-              <p className="rounded-xl border border-success/25 bg-success-soft p-3 text-sm text-success-emphasis">
-                مفتاح الذكاء الاصطناعي مضبوط على الخادم. يجيب البوت من معلومات العيادة (الخدمات
-                والأسعار والأطباء ومواعيد العمل) ومن «الأسئلة والأجوبة».
-              </p>
-            ) : (
-              <div className="rounded-xl border border-warning/30 bg-warning-soft p-3 text-sm text-warning-foreground">
-                <p className="font-semibold">لم يُضبط مفتاح API للذكاء الاصطناعي بعد.</p>
-                <p className="mt-1 text-xs">
-                  أضف المفتاح باسم{" "}
-                  <span dir="ltr" className="rounded bg-surface/60 px-1 font-mono">
-                    ANTHROPIC_API_KEY
-                  </span>{" "}
-                  في ملف <span className="font-mono">.env</span> أو في متغيرات البيئة لدى الاستضافة،
-                  ثم أعد تشغيل الموقع. حتى ذلك الحين يرد البوت على الأسئلة المكتوبة من «الأسئلة
-                  والأجوبة» فقط.
-                </p>
-              </div>
-            )}
-            <div className="grid gap-1.5">
-              <Label htmlFor={`${uid}-4`}>النموذج</Label>
-              <Select value={draft.ai_model} onValueChange={(v) => onChange({ ai_model: v })}>
-                <SelectTrigger id={`${uid}-4`}>
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  {AI_MODELS.map((m) => (
-                    <SelectItem key={m.id} value={m.id}>
-                      {m.label} — {m.hint}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
-            <div className="grid gap-1.5">
-              <Label htmlFor={`${uid}-5`}>تعليمات إضافية للبوت</Label>
-              <Textarea
-                id={`${uid}-5`}
-                rows={4}
-                value={draft.ai_instructions}
-                maxLength={3000}
-                placeholder="مثال: نقبل تأمين بوبا والتعاونية. الكشف الأول للأطفال مجاني. لا تعطِ مواعيد قبل التأكد."
-                onChange={(e) => onChange({ ai_instructions: e.target.value })}
-              />
-              <p className="text-xs text-muted-foreground">
-                تُرسل للنموذج مع كل سؤال، فلا تكتب فيها معلومات سرية.
-              </p>
-            </div>
-            <div className="grid gap-1.5">
-              <Label htmlFor={`${uid}-6`}>الحد الأقصى لأسئلة الذكاء الاصطناعي يوميًا</Label>
-              <Input
-                id={`${uid}-6`}
-                type="number"
-                min={0}
-                max={100000}
-                className="w-40"
-                value={draft.ai_daily_limit}
-                onChange={(e) => {
-                  const n = Math.round(Number(e.target.value));
-                  if (Number.isFinite(n))
-                    onChange({ ai_daily_limit: Math.min(100000, Math.max(0, n)) });
-                }}
-              />
-              <p className="text-xs text-muted-foreground">
-                يحمي فاتورة الـ API لأن الرابط عام. بعد الوصول للحد يرد البوت من «الأسئلة والأجوبة»
-                حتى اليوم التالي.
-              </p>
-            </div>
+      <SectionCard icon={Sparkles} title="الذكاء الاصطناعي">
+        <div className="grid gap-4">
+          {draft.mode === "menu" && (
+            <p className="rounded-xl border border-info/25 bg-info-soft p-3 text-sm text-info">
+              البوت الآن على «اختيارات فقط» فلا يستخدم الذكاء الاصطناعي. اختر «الاثنان معًا» أو
+              «ذكاء اصطناعي» في «طريقة رد البوت» بالأعلى بعد إضافة المفتاح.
+            </p>
+          )}
+          <AiKeyCard model={draft.ai_model} onModelChange={(ai_model) => onChange({ ai_model })} />
+          <div className="grid gap-1.5">
+            <Label htmlFor={`${uid}-5`}>تعليمات إضافية للبوت</Label>
+            <Textarea
+              id={`${uid}-5`}
+              rows={4}
+              value={draft.ai_instructions}
+              maxLength={3000}
+              placeholder="مثال: نقبل تأمين بوبا والتعاونية. الكشف الأول للأطفال مجاني. لا تعطِ مواعيد قبل التأكد."
+              onChange={(e) => onChange({ ai_instructions: e.target.value })}
+            />
+            <p className="text-xs text-muted-foreground">
+              تُرسل للنموذج مع كل سؤال، فلا تكتب فيها معلومات سرية.
+            </p>
           </div>
-        </SectionCard>
-      )}
+          <div className="grid gap-1.5">
+            <Label htmlFor={`${uid}-6`}>الحد الأقصى لأسئلة الذكاء الاصطناعي يوميًا</Label>
+            <Input
+              id={`${uid}-6`}
+              type="number"
+              min={0}
+              max={100000}
+              className="w-40"
+              value={draft.ai_daily_limit}
+              onChange={(e) => {
+                const n = Math.round(Number(e.target.value));
+                if (Number.isFinite(n))
+                  onChange({ ai_daily_limit: Math.min(100000, Math.max(0, n)) });
+              }}
+            />
+            <p className="text-xs text-muted-foreground">
+              يحمي فاتورة الـ API لأن الرابط عام. بعد الوصول للحد يرد البوت من «الأسئلة والأجوبة»
+              حتى اليوم التالي.
+            </p>
+          </div>
+        </div>
+      </SectionCard>
 
       <SectionCard icon={CalendarCheck} title="الحجز من داخل الشات بوت">
         <div className="grid gap-1.5">

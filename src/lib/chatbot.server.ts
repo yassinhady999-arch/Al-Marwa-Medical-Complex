@@ -1,28 +1,22 @@
-// Server-only: the public chatbot's AI mode. Claude answers customers using only
-// the clinic's live data (services, doctors, hours, contact) and the knowledge
-// staff added in «تدريب الشات بوت».
+// Server-only: the public chatbot's AI mode. The chat model the clinic picked (Claude
+// or any OpenAI-compatible provider) answers customers using only the clinic's live
+// data (services, doctors, hours, contact) and the knowledge staff added in
+// «تدريب الشات بوت».
 import Anthropic from "@anthropic-ai/sdk";
-import { AI_MODELS, formatWorkingHours, type PublicChatbot } from "@/lib/chatbot";
+import { formatWorkingHours, type PublicChatbot } from "@/lib/chatbot";
 import { departmentIds } from "@/lib/clinic";
+import { anthropicFor, compatChat, resolveAi } from "@/lib/ai-key.server";
+import { MODEL_ID_PATTERN, defaultModel } from "@/lib/ai-providers";
 
-const MODEL_IDS = new Set<string>(AI_MODELS.map((m) => m.id));
 const DEFAULT_MODEL = "claude-opus-5-5";
-/** Take `effort` and the server-side refusal fallback; Haiku 4.5 takes neither. */
+/** Take `effort` and the server-side refusal fallback; other models get a plain request. */
 const ADAPTIVE_MODELS = new Set<string>(["claude-opus-5-5", "claude-sonnet-5-5"]);
 
 export type CustomerMessage = { role: "user" | "assistant"; content: string };
 
-let _client: Anthropic | undefined;
-
-export function chatbotAiConfigured(): boolean {
-  return !!process.env["ANTHROPIC_API_KEY"];
-}
-
-function getClient(): Anthropic | null {
-  const apiKey = process.env["ANTHROPIC_API_KEY"];
-  if (!apiKey) return null;
-  if (!_client) _client = new Anthropic({ apiKey });
-  return _client;
+/** True when a key is available (saved from the staff page, or ANTHROPIC_API_KEY). */
+export async function chatbotAiConfigured(): Promise<boolean> {
+  return (await resolveAi()) !== null;
 }
 
 function section(tag: string, lines: string[]): string {
@@ -108,21 +102,44 @@ export async function answerCustomer(
   messages: CustomerMessage[],
   bookingUrl: string | null,
 ): Promise<{ answer: string } | { error: string; status: number }> {
-  const client = getClient();
-  if (!client) return { error: "ai_not_configured", status: 503 };
+  const ai = await resolveAi();
+  if (!ai) return { error: "ai_not_configured", status: 503 };
 
-  const model = MODEL_IDS.has(config.model) ? config.model : DEFAULT_MODEL;
+  // The picked model if the account has it; otherwise the provider's default.
+  const picked =
+    MODEL_ID_PATTERN.test(config.model) &&
+    (ai.models.length === 0 || ai.models.includes(config.model))
+      ? config.model
+      : null;
+  const model =
+    picked ??
+    defaultModel(
+      ai.provider,
+      ai.models.map((id) => ({ id })),
+    ) ??
+    (ai.provider === "anthropic" ? DEFAULT_MODEL : null);
+  if (!model) return { error: "model_unavailable", status: 502 };
+  const system = buildSystemPrompt(bot, config.instructions, bookingUrl);
+  const today = `تاريخ اليوم بتوقيت الرياض: ${todayRiyadh()}.`;
+
+  if (ai.provider !== "anthropic") {
+    const result = await compatChat(ai, model, `${system}\n\n${today}`, messages);
+    if ("error" in result) return result;
+    return { answer: result.text || bot.fallback_message };
+  }
+
+  const client = anthropicFor(ai.key);
   const params: Anthropic.Beta.MessageCreateParamsNonStreaming = {
     model,
     max_tokens: 4096,
     system: [
       {
         type: "text",
-        text: buildSystemPrompt(bot, config.instructions, bookingUrl),
+        text: system,
         cache_control: { type: "ephemeral" },
       },
       // After the cache breakpoint: changes daily.
-      { type: "text", text: `تاريخ اليوم بتوقيت الرياض: ${todayRiyadh()}.` },
+      { type: "text", text: today },
     ],
     messages,
   };

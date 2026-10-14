@@ -1890,7 +1890,64 @@ function mockSaveDoctor(args: Row): string {
   return id;
 }
 
+/** The AI key saved from the chatbot page (preview keeps only the hint, like the real RPCs return). */
+let mockAiKey: {
+  provider: string;
+  base_url: string | null;
+  key_hint: string;
+  models: unknown[];
+  verified_at: string;
+} | null = null;
+
+/** Like chatbot_ai_align_model: move the bot to a model the new account has. */
+function mockAlignModel(defaultModel: unknown) {
+  const bot = rowsOf("chatbot_settings")[0];
+  const ids = (mockAiKey?.models ?? []).map((m) => (m as Row)["id"]);
+  if (bot && typeof defaultModel === "string" && ids.length && !ids.includes(bot["ai_model"]))
+    bot["ai_model"] = defaultModel;
+}
+
+function mockAiKeyRpc(fn: string, args: Row): { handled: boolean; value?: unknown } {
+  const info = () => (mockAiKey ? { has_key: true, ...mockAiKey } : { has_key: false, models: [] });
+  if (fn === "get_chatbot_ai_key_info") return { handled: true, value: info() };
+  if (fn === "set_chatbot_ai_key") {
+    const key = String(args["_key"] ?? "").trim();
+    const provider = String(args["_provider"] ?? "anthropic");
+    if (
+      key.length < 8 ||
+      /\s/.test(key) ||
+      (provider === "anthropic" && !key.startsWith("sk-ant-"))
+    )
+      throw new MockRpcError("INVALID_KEY: صيغة المفتاح غير صحيحة");
+    mockAiKey = {
+      provider,
+      base_url: provider === "custom" ? String(args["_base_url"] ?? "") : null,
+      key_hint: `${key.slice(0, 6)}…${key.slice(-4)}`,
+      models: Array.isArray(args["_models"]) ? (args["_models"] as unknown[]) : [],
+      verified_at: new Date().toISOString(),
+    };
+    mockAlignModel(args["_default_model"]);
+    return { handled: true, value: info() };
+  }
+  if (fn === "set_chatbot_ai_models" && mockAiKey) {
+    mockAiKey = {
+      ...mockAiKey,
+      models: Array.isArray(args["_models"]) ? (args["_models"] as unknown[]) : [],
+      verified_at: new Date().toISOString(),
+    };
+    mockAlignModel(args["_default_model"]);
+    return { handled: true, value: info() };
+  }
+  if (fn === "clear_chatbot_ai_key") {
+    mockAiKey = null;
+    return { handled: true, value: info() };
+  }
+  return { handled: false };
+}
+
 function mockRpc(fn: string, args: Row): unknown {
+  const aiKey = mockAiKeyRpc(fn, args);
+  if (aiKey.handled) return aiKey.value;
   const publicRpc = mockPublicRpc(fn, args);
   if (publicRpc.handled) return publicRpc.value;
   if (fn === "save_doctor") return mockSaveDoctor(args);

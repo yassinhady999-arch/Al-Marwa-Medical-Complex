@@ -371,6 +371,42 @@ export type Database = {
         };
         Relationships: [];
       };
+      chatbot_ai_credentials: {
+        Row: {
+          api_key: string;
+          base_url: string | null;
+          id: boolean;
+          key_hint: string;
+          models: Json;
+          provider: string;
+          updated_at: string;
+          updated_by: string | null;
+          verified_at: string;
+        };
+        Insert: {
+          api_key: string;
+          base_url?: string | null;
+          id?: boolean;
+          key_hint: string;
+          models?: Json;
+          provider?: string;
+          updated_at?: string;
+          updated_by?: string | null;
+          verified_at?: string;
+        };
+        Update: {
+          api_key?: string;
+          base_url?: string | null;
+          id?: boolean;
+          key_hint?: string;
+          models?: Json;
+          provider?: string;
+          updated_at?: string;
+          updated_by?: string | null;
+          verified_at?: string;
+        };
+        Relationships: [];
+      };
       chatbot_knowledge: {
         Row: {
           answer: string;
@@ -1174,6 +1210,22 @@ export type Database = {
       };
       handoff_event_payload: { Args: { _conversation_id: string }; Returns: Json };
       is_admin: { Args: never; Returns: boolean };
+      get_chatbot_ai_key_info: { Args: never; Returns: Json };
+      set_chatbot_ai_key: {
+        Args: {
+          _provider: string;
+          _key: string;
+          _models: Json;
+          _base_url?: string | null;
+          _default_model?: string | null;
+        };
+        Returns: Json;
+      };
+      set_chatbot_ai_models: {
+        Args: { _models: Json; _default_model?: string | null };
+        Returns: Json;
+      };
+      clear_chatbot_ai_key: { Args: never; Returns: Json };
       log_chatbot_exchange: {
         Args: {
           _answer: string;

@@ -5,17 +5,17 @@
 import Anthropic from "@anthropic-ai/sdk";
 import type { Admin } from "@/lib/n8n.server";
 import { STATUS_LABELS, type AppointmentStatus } from "@/lib/clinic";
+import { anthropicFor, resolveAnthropicKey } from "@/lib/ai-key.server";
 
 const STATUS_VALUES = Object.keys(STATUS_LABELS) as AppointmentStatus[];
 
 export type ChatMessage = { role: "user" | "assistant"; content: string };
 
-let _client: Anthropic | undefined;
-function getClient(): Anthropic | null {
-  const apiKey = process.env["ANTHROPIC_API_KEY"];
-  if (!apiKey) return null;
-  if (!_client) _client = new Anthropic({ apiKey });
-  return _client;
+async function getClient(): Promise<Anthropic | null> {
+  // The Anthropic key saved in «تدريب الشات بوت» if there is one, else ANTHROPIC_API_KEY.
+  // (This assistant relies on Anthropic tool calling, so other providers don't apply.)
+  const key = await resolveAnthropicKey();
+  return key ? anthropicFor(key) : null;
 }
 
 const STATS_TOOL: Anthropic.Tool = {
@@ -103,7 +103,7 @@ export async function answerAssistantQuestion(
   question: string,
   history: ChatMessage[],
 ): Promise<{ answer: string } | { error: string; status: number }> {
-  const client = getClient();
+  const client = await getClient();
   if (!client) return { error: "integration_not_configured", status: 503 };
 
   const messages: Anthropic.MessageParam[] = [
