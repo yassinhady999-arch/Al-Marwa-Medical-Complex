@@ -4,7 +4,6 @@ import {
   AlignJustify,
   Cake,
   Calendar,
-  CalendarClock,
   CircleDot,
   Hash,
   List,
@@ -12,12 +11,15 @@ import {
   MapPin,
   Phone,
   SquareCheck,
+  Stethoscope,
   StickyNote,
   Type,
   User,
   VenusAndMars,
 } from "lucide-react";
 import type { Json } from "@/integrations/supabase/types";
+import { whatsappNumber } from "@/lib/chatbot";
+import type { Tone } from "@/lib/clinic";
 
 export const SYSTEM_FIELD_TYPES = [
   "full_name",
@@ -60,8 +62,9 @@ export type FormSettings = {
   specialty_ids: string[];
   /** Empty = every active service within the allowed specialties. */
   service_ids: string[];
-  /** false = no doctor field; the clinic assigns the least busy free doctor. */
+  /** false = no doctor field; the clinic picks the doctor when it confirms the time. */
   choose_doctor: boolean;
+  /** Unused since requests replaced slot booking; kept so stored forms round-trip. */
   booking_window_days: number;
   show_prices: boolean;
   success_message: string;
@@ -76,7 +79,7 @@ export const SYSTEM_FIELD_META: Record<
 > = {
   full_name: { label: "الاسم الكامل", locked: true, icon: User, placeholder: "مثال: محمد أحمد" },
   phone: { label: "رقم الجوال", locked: true, icon: Phone, placeholder: "05xxxxxxxx" },
-  appointment: { label: "اختيار الموعد", locked: true, icon: CalendarClock },
+  appointment: { label: "الخدمة المطلوبة", locked: true, icon: Stethoscope },
   email: { label: "البريد الإلكتروني", locked: false, icon: Mail, placeholder: "name@example.com" },
   gender: { label: "الجنس", locked: false, icon: VenusAndMars },
   date_of_birth: { label: "تاريخ الميلاد", locked: false, icon: Cake },
@@ -149,7 +152,7 @@ export const DEFAULT_SETTINGS: FormSettings = {
   choose_doctor: true,
   booking_window_days: 21,
   show_prices: true,
-  success_message: "تم استلام حجزك بنجاح ✅ سنتواصل معك لتأكيد الموعد.",
+  success_message: "نرجو الالتزام بالموعد بعد تأكيده، والاعتذار قبل الموعد بيوم على الأقل.",
 };
 
 const ALL_TYPES = new Set<string>([...SYSTEM_FIELD_TYPES, ...CUSTOM_FIELD_TYPES]);
@@ -246,6 +249,8 @@ export type PublicBookingForm = {
     address: string | null;
     city: string | null;
     logo_url: string | null;
+    /** The number the WhatsApp button opens: the clinic's WhatsApp number, else its phone. */
+    whatsapp?: string | null;
   } | null;
   specialties: { id: string; name: string }[];
   services: PublicService[];
@@ -275,16 +280,69 @@ export function parsePublicForm(json: Json | null): PublicBookingForm | null {
   };
 }
 
-export type BookingConfirmation = {
-  appointment_number: string;
-  date: string;
-  start_time: string;
-  end_time: string;
-  doctor_name: string | null;
+// ---------------------------------------------------------------------------
+// Booking requests: the form records a request, the patient finishes on WhatsApp
+// and staff confirm the time later (قسم «الحجوزات»).
+// ---------------------------------------------------------------------------
+
+export const REQUEST_STATUSES = ["pending_contact", "contacted", "confirmed", "cancelled"] as const;
+export type BookingRequestStatus = (typeof REQUEST_STATUSES)[number];
+
+export const REQUEST_STATUS_META: Record<BookingRequestStatus, { label: string; tone: Tone }> = {
+  pending_contact: { label: "بانتظار التواصل", tone: "warning" },
+  contacted: { label: "تم التواصل", tone: "info" },
+  confirmed: { label: "تم تأكيد الموعد", tone: "success" },
+  cancelled: { label: "ملغي", tone: "neutral" },
+};
+
+export function requestStatus(value: string | null | undefined): BookingRequestStatus {
+  return (REQUEST_STATUSES as readonly string[]).includes(value ?? "")
+    ? (value as BookingRequestStatus)
+    : "pending_contact";
+}
+
+/** What `submit_booking_request` returns once the request is saved. */
+export type BookingRequestConfirmation = {
+  request_number: string;
+  status: BookingRequestStatus;
+  created_at: string;
+  patient_name: string | null;
+  phone: string | null;
+  specialty_name: string | null;
   service_name: string | null;
+  /** Null when no doctor was asked for, or the doctor's name is hidden from customers. */
+  doctor_name: string | null;
   success_message: string | null;
+  clinic_whatsapp: string | null;
+  clinic_phone: string | null;
+  /** True when this is a request the patient had already sent. */
   duplicate: boolean;
 };
+
+/** The ready-made WhatsApp message, with what the patient actually entered. */
+export function bookingRequestMessage(r: BookingRequestConfirmation): string {
+  const service = r.service_name
+    ? `${r.service_name}${r.specialty_name ? ` (${r.specialty_name})` : ""}`
+    : (r.specialty_name ?? "—");
+  return [
+    "السلام عليكم، أرغب في استكمال طلب حجز لدى المجمع.",
+    "",
+    `رقم الطلب: ${r.request_number}`,
+    `اسم المريض: ${r.patient_name ?? "—"}`,
+    `رقم التواصل: ${r.phone ?? "—"}`,
+    `الخدمة المطلوبة: ${service}`,
+    ...(r.doctor_name ? [`الطبيب المطلوب: ${r.doctor_name}`] : []),
+    "",
+    "أرجو إفادتي بالمواعيد المتاحة لتأكيد الحجز.",
+  ].join("\n");
+}
+
+/** wa.me link to the clinic with the message filled in, or null when no usable number is set. */
+export function bookingRequestWhatsAppUrl(r: BookingRequestConfirmation): string | null {
+  const number = r.clinic_whatsapp ? whatsappNumber(r.clinic_whatsapp) : "";
+  if (number.length < 10 || number.length > 15) return null;
+  return `https://wa.me/${number}?text=${encodeURIComponent(bookingRequestMessage(r))}`;
+}
 
 export function bookingLink(slug: string): string {
   const origin = typeof window === "undefined" ? "" : window.location.origin;

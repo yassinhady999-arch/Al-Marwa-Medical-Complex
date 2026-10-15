@@ -72,7 +72,7 @@ function ClinicCard({ canEdit }: { canEdit: boolean }) {
     queryFn: async () => {
       const { data, error } = await supabase
         .from("clinic_settings")
-        .select("id, clinic_name, phone, email, city, address, timezone, currency")
+        .select("id, clinic_name, phone, whatsapp_number, email, city, address, timezone, currency")
         .limit(1)
         .maybeSingle();
       if (error) throw error;
@@ -83,6 +83,7 @@ function ClinicCard({ canEdit }: { canEdit: boolean }) {
   const [form, setForm] = useState({
     clinic_name: "",
     phone: "",
+    whatsapp_number: "",
     email: "",
     city: "",
     address: "",
@@ -93,6 +94,7 @@ function ClinicCard({ canEdit }: { canEdit: boolean }) {
       setForm({
         clinic_name: data.clinic_name ?? "",
         phone: data.phone ?? "",
+        whatsapp_number: data.whatsapp_number ?? "",
         email: data.email ?? "",
         city: data.city ?? "",
         address: data.address ?? "",
@@ -103,11 +105,16 @@ function ClinicCard({ canEdit }: { canEdit: boolean }) {
   const save = useMutation({
     mutationFn: async () => {
       if (!data?.id) throw new Error("لا توجد إعدادات عيادة");
+      const whatsapp = form.whatsapp_number.trim();
+      const whatsappDigits = whatsapp.replace(/D/g, "").length;
+      if (whatsapp && (whatsappDigits < 9 || whatsappDigits > 15))
+        throw new Error("رقم واتساب المجمع غير صحيح، اكتبه مثل 05xxxxxxxx");
       const { error } = await supabase
         .from("clinic_settings")
         .update({
           clinic_name: form.clinic_name.trim(),
           phone: form.phone.trim() || null,
+          whatsapp_number: whatsapp || null,
           email: form.email.trim() || null,
           city: form.city.trim() || null,
           address: form.address.trim() || null,
@@ -123,7 +130,7 @@ function ClinicCard({ canEdit }: { canEdit: boolean }) {
         entityType: "clinic_settings",
       });
       toast.success("تم حفظ بيانات العيادة");
-      qc.invalidateQueries({ queryKey: ["clinic_settings"] });
+      void qc.invalidateQueries({ queryKey: ["clinic_settings"] });
     },
     onError: (e: Error) => toast.error(e.message),
   });
@@ -141,13 +148,30 @@ function ClinicCard({ canEdit }: { canEdit: boolean }) {
         </div>
         <div className="grid gap-3 sm:grid-cols-2">
           <div className="grid gap-1.5">
-            <Label>الهاتف</Label>
+            <Label htmlFor="clinic-phone">الهاتف</Label>
             <Input
+              id="clinic-phone"
               dir="ltr"
               value={form.phone}
               disabled={!canEdit}
               onChange={(e) => setForm({ ...form, phone: e.target.value })}
             />
+          </div>
+          <div className="grid gap-1.5">
+            <Label htmlFor="clinic-whatsapp">رقم واتساب المجمع</Label>
+            <Input
+              id="clinic-whatsapp"
+              dir="ltr"
+              inputMode="tel"
+              placeholder="05xxxxxxxx"
+              value={form.whatsapp_number}
+              disabled={!canEdit}
+              onChange={(e) => setForm({ ...form, whatsapp_number: e.target.value })}
+            />
+            <p className="text-xs text-muted-foreground">
+              زر «استكمال حجزك عبر واتساب» يفتح للعميل محادثة مع هذا الرقم برسالة جاهزة. إذا تركته
+              فارغًا يُستخدم رقم الهاتف.
+            </p>
           </div>
           <div className="grid gap-1.5">
             <Label>البريد الإلكتروني</Label>

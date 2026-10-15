@@ -39,13 +39,14 @@ import {
 import { ADMIN_ONLY_SECTIONS, type SectionKey } from "@/lib/access";
 import { initials } from "@/lib/clinic";
 import { useHandoffWaitingCount } from "@/lib/handoff";
+import { useNewRequestsCount } from "@/components/app/booking-requests";
 import { BRAND } from "@/lib/brand";
 
 export { EmptyState } from "@/components/app/empty-state";
 
 const NAV: { to: string; label: string; icon: typeof LayoutDashboard; section: SectionKey }[] = [
   { to: "/dashboard", label: "لوحة التشغيل", icon: LayoutDashboard, section: "dashboard" },
-  { to: "/appointments", label: "المواعيد", icon: CalendarDays, section: "appointments" },
+  { to: "/appointments", label: "الحجوزات", icon: CalendarDays, section: "appointments" },
   { to: "/calendar", label: "التقويم", icon: CalendarRange, section: "calendar" },
   { to: "/forms", label: "نماذج الحجز", icon: ClipboardList, section: "forms" },
   { to: "/patients", label: "المرضى", icon: Users, section: "patients" },
@@ -133,6 +134,7 @@ export function AppFrame({ children }: { children: ReactNode }) {
   );
 
   const handoffWaiting = useHandoffWaitingCount(!!data?.can("handoff"));
+  const { data: newBookings = 0 } = useNewRequestsCount(!!data?.can("appointments"));
 
   const displayName = data?.profile?.full_name || data?.profile?.email || "مستخدم";
   const role = data?.roles?.[0];
@@ -217,6 +219,14 @@ export function AppFrame({ children }: { children: ReactNode }) {
                             title="محادثات بانتظار موظف"
                           >
                             {handoffWaiting}
+                          </span>
+                        )}
+                        {item.section === "appointments" && newBookings > 0 && (
+                          <span
+                            className="tabular ms-auto grid h-5 min-w-5 place-items-center rounded-full bg-warning px-1.5 text-[11px] font-bold text-warning-foreground"
+                            title="حجوزات محتملة بانتظار التواصل"
+                          >
+                            {newBookings}
                           </span>
                         )}
                       </Link>

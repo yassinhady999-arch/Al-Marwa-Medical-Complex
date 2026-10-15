@@ -32,7 +32,7 @@ export const Route = createFileRoute("/_authenticated/forms/")({
       { title: "نماذج الحجز | نظام تشغيل العيادة" },
       {
         name: "description",
-        content: "صمّم نماذج حجز وأرسل رابطها للعملاء ليحجزوا مواعيدهم بأنفسهم.",
+        content: "صمّم نماذج حجز وأرسل رابطها للعملاء ليرسلوا طلبات الحجز ويكملوها عبر واتساب.",
       },
     ],
   }),
@@ -142,7 +142,7 @@ function FormsPage() {
   return (
     <AppShell
       title="نماذج الحجز"
-      description="صمّم نموذجًا، وأرسل رابطه للعملاء ليحجزوا مواعيدهم بأنفسهم"
+      description="صمّم نموذجًا، وأرسل رابطه للعملاء ليرسلوا طلبات الحجز ويكملوها معك عبر واتساب"
       section="forms"
       actions={
         canWrite ? (
@@ -159,7 +159,7 @@ function FormsPage() {
         <EmptyState
           icon={ClipboardList}
           title="لا توجد نماذج حجز بعد"
-          hint="أنشئ نموذجًا، اختر الحقول التي تريد سؤال العميل عنها، ثم انسخ الرابط وأرسله له. كل حجز يصل مباشرة إلى صفحة المواعيد."
+          hint="أنشئ نموذجًا، اختر الحقول التي تريد سؤال العميل عنها، ثم انسخ الرابط وأرسله له. كل طلب يظهر كحجز محتمل في قسم «الحجوزات» لتأكيد موعده مع المريض."
           action={
             canWrite ? (
               <Button onClick={() => create.mutate(undefined)} disabled={create.isPending}>
@@ -201,10 +201,10 @@ function FormsPage() {
               <div className="flex flex-wrap items-center gap-x-5 gap-y-1 text-xs text-muted-foreground">
                 <span className="inline-flex items-center gap-1.5">
                   <CalendarCheck className="size-3.5" />
-                  <span className="tabular font-semibold text-foreground">{f.submissions}</span> حجز
+                  <span className="tabular font-semibold text-foreground">{f.submissions}</span> طلب
                   من النموذج
                 </span>
-                {f.lastSubmission && <span>آخر حجز {formatRelative(f.lastSubmission)}</span>}
+                {f.lastSubmission && <span>آخر طلب {formatRelative(f.lastSubmission)}</span>}
               </div>
 
               <ShareLink url={bookingLink(f.slug)} muted={!f.is_active} />

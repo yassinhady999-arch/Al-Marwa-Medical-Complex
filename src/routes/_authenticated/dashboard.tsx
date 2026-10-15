@@ -273,7 +273,7 @@ function DashboardPage() {
         description={`${appts.length} موعد`}
         action={
           <Link
-            to="/appointments"
+            to="/calendar"
             className="inline-flex items-center gap-1 text-xs font-semibold text-primary-emphasis hover:underline"
           >
             كل المواعيد
@@ -290,7 +290,7 @@ function DashboardPage() {
           <div className="p-5">
             <EmptyState
               title="لا توجد مواعيد اليوم"
-              hint="أضف موعدًا جديدًا من صفحة المواعيد أو انتظر حجزًا عبر واتساب."
+              hint="أضف موعدًا جديدًا من التقويم، أو أكّد حجزًا محتملًا من قسم الحجوزات."
             />
           </div>
         ) : (
@@ -332,7 +332,7 @@ function DashboardPage() {
                       </DropdownMenuItem>
                     )}
                     <DropdownMenuItem asChild>
-                      <Link to="/appointments">عرض التفاصيل</Link>
+                      <Link to="/calendar">عرض في التقويم</Link>
                     </DropdownMenuItem>
                   </DropdownMenuContent>
                 </DropdownMenu>

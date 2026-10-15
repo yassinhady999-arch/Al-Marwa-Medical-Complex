@@ -375,12 +375,12 @@ begin
     insert into public.booking_forms (title, created_by) values ('حجز موعد في المجمع', null) returning id into _form;
   end if;
   update public.booking_forms set
-    description = 'اختر القسم والخدمة والوقت المناسب لك، وسنتواصل معك لتأكيد الموعد.',
+    description = 'اختر القسم والخدمة، ثم أكمل طلبك عبر واتساب ليحدد لك المجمع الموعد المناسب.',
     is_active = true,
     fields = '[
       {"id": "full_name", "type": "full_name", "label": "الاسم الثلاثي", "required": true, "placeholder": "مثال: محمد أحمد علي"},
       {"id": "phone", "type": "phone", "label": "رقم الجوال", "required": true, "placeholder": "05xxxxxxxx"},
-      {"id": "appointment", "type": "appointment", "label": "الخدمة والموعد", "required": true},
+      {"id": "appointment", "type": "appointment", "label": "الخدمة المطلوبة", "required": true},
       {"id": "notes", "type": "notes", "label": "ملاحظات", "required": false, "placeholder": "أي معلومة تحب توصلها للطبيب"}
     ]'::jsonb,
     settings = jsonb_build_object(
@@ -389,8 +389,7 @@ begin
       'choose_doctor', true,
       'booking_window_days', 14,
       'show_prices', true,
-      'success_message', E'تم استلام حجزك بنجاح ✅ سنتواصل معك لتأكيد الموعد.\n'
-                         || E'نرجو الالتزام بالموعد، والاعتذار قبل الموعد بيوم على الأقل.\n'
+      'success_message', E'نرجو الالتزام بالموعد بعد تأكيده، والاعتذار قبل الموعد بيوم على الأقل.\n'
                          || 'للاستفسار: ' || _phone_main)
   where id = _form;
 
@@ -487,7 +486,7 @@ begin
 
   _menu := jsonb_build_array(
     pg_temp.menu_node('n_booking', '📅 حجز موعد', 'booking',
-      E'يسعدنا خدمتك 🌷\nاحجز موعدك أونلاين في أقل من دقيقة: اختر القسم والخدمة والوقت المناسب لك 👇'),
+      E'يسعدنا خدمتك 🌷\nاختر القسم والخدمة من نموذج الحجز، ثم أكمل طلبك عبر واتساب ليحدد لك المجمع الموعد المناسب 👇'),
     pg_temp.menu_node('n_departments', '🏥 الأقسام والخدمات', 'text', 'اختر القسم 👇', null, _departments),
     pg_temp.menu_node('n_prices', '💰 الأسعار والعروض', 'text', 'اختر ما تريد معرفته 👇', null,
       jsonb_build_array(
@@ -553,7 +552,7 @@ begin
   create temp table _faq (category text, question text, answer text) on commit drop;
   insert into _faq values
     ('حجز', 'كيف أحجز موعد؟',
-     'احجز موعدك أونلاين من زر «احجز الآن» في «حجز موعد»: اختر القسم والخدمة والوقت المناسب لك. وللاستفسار اتصل بنا على 0566684827.'),
+     'احجز من زر «احجز الآن» في «حجز موعد»: اختر القسم والخدمة، ثم أكمل طلبك عبر واتساب ليحدد لك المجمع الموعد المناسب. وللاستفسار اتصل بنا على 0566684827.'),
     ('حجز', 'كيف ألغي أو أعتذر عن موعدي؟',
      'الاعتذار عن الموعد يكون قبل الموعد بيوم على الأقل، بالاتصال على 0566684827.'),
     ('حجز', 'هل يجب الحضور في الموعد المحدد؟',

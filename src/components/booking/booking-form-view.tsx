@@ -1,6 +1,13 @@
-import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { useMutation } from "@tanstack/react-query";
 import { useId, useState } from "react";
-import { CalendarClock, CircleCheckBig, LoaderCircle, Stethoscope } from "lucide-react";
+import {
+  CircleCheckBig,
+  LoaderCircle,
+  MessageCircle,
+  Phone,
+  Stethoscope,
+  TriangleAlert,
+} from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import type { Json } from "@/integrations/supabase/types";
 import { Button } from "@/components/ui/button";
@@ -16,60 +23,38 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { cn } from "@/lib/utils";
+import { priceLabel, dbErrorMessage, worksIn, todayRiyadh } from "@/lib/clinic";
 import {
-  WEEKDAYS,
-  priceLabel,
-  dbErrorMessage,
-  worksIn,
-  formatDate,
-  formatTime,
-  todayRiyadh,
-} from "@/lib/clinic";
-import type { BookingConfirmation, FormField, PublicBookingForm } from "@/lib/booking-forms";
+  bookingRequestWhatsAppUrl,
+  type BookingRequestConfirmation,
+  type FormField,
+  type PublicBookingForm,
+} from "@/lib/booking-forms";
 
 const ANY_DOCTOR = "any";
-
-function addDaysIso(iso: string, days: number): string {
-  const d = new Date(`${iso}T00:00:00`);
-  d.setDate(d.getDate() + days);
-  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
-}
-
-/** Shown in the builder's preview, where nothing is booked for real. */
-function sampleSlots(): { day: string; slot_time: string }[] {
-  const today = todayRiyadh();
-  return [1, 2, 3, 5].flatMap((offset) =>
-    ["09:00:00", "09:30:00", "10:30:00", "12:00:00", "16:00:00", "17:30:00"].map((slot_time) => ({
-      day: addDaysIso(today, offset),
-      slot_time,
-    })),
-  );
-}
-
-function dayLabel(day: string): { top: string; bottom: string } {
-  const today = todayRiyadh();
-  const date = new Date(`${day}T00:00:00`);
-  const top =
-    day === today
-      ? "اليوم"
-      : day === addDaysIso(today, 1)
-        ? "غدًا"
-        : (WEEKDAYS[date.getDay()] ?? "");
-  const bottom = new Intl.DateTimeFormat("ar-SA-u-ca-gregory", {
-    day: "numeric",
-    month: "short",
-  }).format(date);
-  return { top, bottom };
-}
+const WHATSAPP_BUTTON = "bg-[#1fa855] text-white hover:bg-[#1a9049]";
 
 function digits(value: string): string {
   return value.replace(/\D/g, "");
 }
 
+/** What went wrong, for the patient: our own checks, setup problems, or the connection. */
+function requestError(e: Error & { code?: string }): string {
+  // Our checks raise "CODE: الرسالة".
+  if (/^[A-Z_]+:/.test(e.message)) return dbErrorMessage(e);
+  console.error("[booking request]", e.code ?? "", e.message);
+  // The database doesn't have the booking-request function (its SQL update wasn't run).
+  if (e.code === "PGRST202" || e.code === "42883")
+    return "تعذّر تسجيل طلبك لأن نظام الحجز قيد التحديث حاليًا. تواصل مع المجمع مباشرة.";
+  if (/failed to fetch|networkerror|load failed|network/i.test(e.message))
+    return "تعذّر تسجيل طلبك. تحقّق من اتصالك بالإنترنت وحاول مرة أخرى.";
+  return "تعذّر تسجيل طلبك، حاول مرة أخرى أو تواصل مع المجمع مباشرة.";
+}
+
 /**
- * The booking form a customer fills in. `preview` renders the same form for the
- * builder with sample times and no real submission.
+ * The booking form a customer fills in. It records a booking request (not an
+ * appointment); the patient then finishes with the clinic on WhatsApp, which sets
+ * the time. `preview` renders the same form for the builder with no real submission.
  */
 export function BookingFormView({
   form,
@@ -78,20 +63,18 @@ export function BookingFormView({
   form: PublicBookingForm;
   preview?: boolean | undefined;
 }) {
-  const qc = useQueryClient();
   const uid = useId();
   const [answers, setAnswers] = useState<Record<string, string>>({});
   const [specialtyId, setSpecialtyId] = useState("");
   const [serviceId, setServiceId] = useState("");
   const [doctorId, setDoctorId] = useState(ANY_DOCTOR);
-  const [day, setDay] = useState("");
-  const [time, setTime] = useState("");
   const [errors, setErrors] = useState<Record<string, string>>({});
-  // One id per attempt: a double tap or retry returns the same booking instead of a second one.
+  // One id per attempt: a double tap or retry returns the same request instead of a second one.
   const [requestId, setRequestId] = useState(() => crypto.randomUUID());
-  const [done, setDone] = useState<BookingConfirmation | null>(null);
+  const [done, setDone] = useState<BookingRequestConfirmation | null>(null);
 
   const { settings } = form;
+  const hasWhatsApp = !!form.clinic?.whatsapp;
   const askSpecialty = form.specialties.length > 1;
   const activeSpecialty = form.specialties.length === 1 ? form.specialties[0]!.id : specialtyId;
   const services = form.services.filter(
@@ -106,75 +89,42 @@ export function BookingFormView({
       : null;
   const ready = (!askSpecialty || !!activeSpecialty) && (services.length === 0 || !!service);
 
-  const slots = useQuery({
-    queryKey: [
-      "public-slots",
-      form.slug,
-      service?.id ?? null,
-      chosenDoctor,
-      activeSpecialty || null,
-    ],
-    enabled: ready && !preview,
-    staleTime: 30_000,
-    queryFn: async () => {
-      const { data, error } = await supabase.rpc("get_public_booking_availability", {
-        _slug: form.slug,
-        ...(service ? { _service_id: service.id } : {}),
-        ...(chosenDoctor ? { _doctor_id: chosenDoctor } : {}),
-        ...(!service && activeSpecialty ? { _specialty_id: activeSpecialty } : {}),
-      });
-      if (error) throw error;
-      return data ?? [];
-    },
-  });
-  const slotRows = preview ? (ready ? sampleSlots() : []) : (slots.data ?? []);
-  const byDay = new Map<string, string[]>();
-  for (const s of slotRows) byDay.set(s.day, [...(byDay.get(s.day) ?? []), s.slot_time]);
-  const days = [...byDay.keys()];
-  const activeDay = byDay.has(day) ? day : (days[0] ?? "");
-  const times = byDay.get(activeDay) ?? [];
-  const activeTime = times.includes(time) ? time : "";
-
   const setAnswer = (id: string, value: string) => {
     setAnswers((a) => ({ ...a, [id]: value }));
     setErrors(({ [id]: _drop, ...rest }) => rest);
   };
-  const resetSlot = () => {
-    setTime("");
-    setErrors(({ appointment: _drop, ...rest }) => rest);
-  };
+  const clearChoiceError = () => setErrors(({ appointment: _drop, ...rest }) => rest);
 
   const submit = useMutation({
     mutationFn: async () => {
-      const { data, error } = await supabase.rpc("submit_public_booking", {
+      const { data, error } = await supabase.rpc("submit_booking_request", {
         _slug: form.slug,
         _payload: {
           request_id: requestId,
           specialty_id: service?.specialty_id ?? (activeSpecialty || null),
           service_id: service?.id ?? null,
           doctor_id: chosenDoctor,
-          date: activeDay,
-          time: activeTime.slice(0, 5),
           answers,
         } as Json,
       });
       if (error) throw error;
-      return data as unknown as BookingConfirmation;
+      const saved = data as unknown as BookingRequestConfirmation | null;
+      // Never show success unless the database handed back the saved request.
+      if (!saved?.request_number) throw new Error("تعذّر تسجيل طلبك، حاول مرة أخرى.");
+      return saved;
     },
-    onSuccess: (confirmation) => {
-      setDone(confirmation);
-      void qc.invalidateQueries({ queryKey: ["public-slots", form.slug] });
+    onSuccess: (saved) => {
+      setDone(saved);
+      // Only now that the request is saved: open WhatsApp with the message ready. A browser
+      // may block this; the success screen has the same link as a button.
+      const url = bookingRequestWhatsAppUrl(saved);
+      if (url && typeof window !== "undefined") {
+        const tab = window.open(url, "_blank");
+        if (tab) tab.opener = null;
+      }
       if (typeof window !== "undefined") window.scrollTo({ top: 0, behavior: "smooth" });
     },
-    onError: (e: Error) => {
-      if (/SLOT_TAKEN|DOUBLE_BOOKING/.test(e.message)) {
-        setTime("");
-        void slots.refetch();
-        setErrors({ appointment: dbErrorMessage(e) });
-      } else {
-        setErrors({ _form: dbErrorMessage(e) });
-      }
-    },
+    onError: (e: Error) => setErrors({ _form: requestError(e) }),
   });
 
   function validate(): Record<string, string> {
@@ -193,15 +143,14 @@ export function BookingFormView({
         found[f.id] = "البريد الإلكتروني غير صحيح";
       if (f.type === "full_name" && value.length < 2) found[f.id] = "اكتب الاسم الكامل";
     }
-    if (askSpecialty && !activeSpecialty) found["appointment"] = "اختر التخصص";
+    if (askSpecialty && !activeSpecialty) found["appointment"] = "اختر القسم";
     else if (services.length > 0 && !service) found["appointment"] = "اختر الخدمة";
-    else if (!activeTime) found["appointment"] = "اختر يوم ووقت الموعد";
     return found;
   }
 
   function onSubmit(e: React.FormEvent) {
     e.preventDefault();
-    if (preview) return;
+    if (preview || submit.isPending) return;
     const found = validate();
     setErrors(found);
     const first = form.fields.find((f) => found[f.id]);
@@ -215,24 +164,34 @@ export function BookingFormView({
   }
 
   if (done) {
+    const whatsappUrl = bookingRequestWhatsAppUrl(done);
+    const service = done.service_name
+      ? `${done.service_name}${done.specialty_name ? ` (${done.specialty_name})` : ""}`
+      : done.specialty_name;
     return (
       <div className="animate-rise space-y-5 py-4 text-center">
         <span className="mx-auto grid size-16 place-items-center rounded-full bg-success-soft text-success-emphasis">
           <CircleCheckBig className="size-9" />
         </span>
         <div>
-          <h2 className="text-xl font-bold text-foreground">تم حجز موعدك بنجاح</h2>
-          {done.success_message && (
-            <p className="mt-1.5 text-sm text-muted-foreground">{done.success_message}</p>
+          <h2 className="text-xl font-bold text-foreground">تم تسجيل طلبك</h2>
+          <p className="mt-1.5 text-sm text-muted-foreground">
+            {whatsappUrl
+              ? "تم تسجيل طلبك، ويمكنك الآن استكمال التواصل مع المجمع عبر واتساب لتحديد الموعد."
+              : "تم تسجيل طلبك، وسيتواصل معك المجمع لتحديد الموعد."}
+          </p>
+          {done.duplicate && (
+            <p className="mt-1 text-xs text-muted-foreground">
+              هذا طلبك السابق نفسه، لم نسجّل طلبًا جديدًا.
+            </p>
           )}
         </div>
         <dl className="mx-auto grid max-w-sm gap-2 rounded-2xl border border-border bg-surface-2/60 p-4 text-sm">
           {[
-            ["رقم الحجز", done.appointment_number],
-            ["التاريخ", formatDate(done.date)],
-            ["الوقت", `${formatTime(done.start_time)} – ${formatTime(done.end_time)}`],
-            ["الطبيب", done.doctor_name],
-            ["الخدمة", done.service_name],
+            ["رقم الطلب", done.request_number],
+            ["الخدمة المطلوبة", service],
+            ["الطبيب المطلوب", done.doctor_name],
+            ["الحالة", "بانتظار تحديد الموعد"],
           ]
             .filter(([, v]) => v)
             .map(([k, v]) => (
@@ -242,22 +201,43 @@ export function BookingFormView({
               </div>
             ))}
         </dl>
+
+        {whatsappUrl ? (
+          <div className="mx-auto max-w-sm space-y-2">
+            <Button asChild size="lg" className={`w-full ${WHATSAPP_BUTTON}`}>
+              <a href={whatsappUrl} target="_blank" rel="noopener noreferrer">
+                <MessageCircle />
+                استكمال حجزك عبر واتساب
+              </a>
+            </Button>
+            <p className="text-xs leading-relaxed text-muted-foreground">
+              تُفتح محادثة واتساب مع المجمع ورسالتك جاهزة فيها. اضغط «إرسال» داخل واتساب لتصل
+              للمجمع، فالرسالة لا تُرسل وحدها.
+            </p>
+          </div>
+        ) : (
+          <NoWhatsApp phone={done.clinic_phone} />
+        )}
+
+        {done.success_message && (
+          <p className="mx-auto max-w-sm whitespace-pre-wrap text-xs text-muted-foreground">
+            {done.success_message}
+          </p>
+        )}
         <Button
           variant="outline"
           onClick={() => {
-            // A new booking may be for someone else or another service: start clean.
+            // A new request may be for someone else or another service: start clean.
             setDone(null);
             setAnswers({});
             setSpecialtyId("");
             setServiceId("");
             setDoctorId(ANY_DOCTOR);
-            setDay("");
-            setTime("");
             setErrors({});
             setRequestId(crypto.randomUUID());
           }}
         >
-          حجز موعد آخر
+          طلب حجز آخر
         </Button>
       </div>
     );
@@ -280,24 +260,24 @@ export function BookingFormView({
             className="space-y-4 rounded-2xl border border-border bg-surface-2/50 p-4"
           >
             <p className="flex items-center gap-2 font-bold text-foreground">
-              <CalendarClock className="size-5 text-primary-emphasis" />
+              <Stethoscope className="size-5 text-primary-emphasis" />
               {field.label}
             </p>
 
             {askSpecialty && (
               <div className="grid gap-1.5">
-                <Label htmlFor={`${uid}-1`}>التخصص</Label>
+                <Label htmlFor={`${uid}-1`}>القسم</Label>
                 <Select
                   value={specialtyId}
                   onValueChange={(v) => {
                     setSpecialtyId(v);
                     setServiceId("");
                     setDoctorId(ANY_DOCTOR);
-                    resetSlot();
+                    clearChoiceError();
                   }}
                 >
                   <SelectTrigger id={`${uid}-1`}>
-                    <SelectValue placeholder="اختر التخصص" />
+                    <SelectValue placeholder="اختر القسم" />
                   </SelectTrigger>
                   <SelectContent>
                     {form.specialties.map((s) => (
@@ -318,7 +298,7 @@ export function BookingFormView({
                   onValueChange={(v) => {
                     setServiceId(v);
                     setDoctorId(ANY_DOCTOR);
-                    resetSlot();
+                    clearChoiceError();
                   }}
                 >
                   <SelectTrigger id={`${uid}-2`}>
@@ -327,7 +307,7 @@ export function BookingFormView({
                   <SelectContent>
                     {services.map((s) => (
                       <SelectItem key={s.id} value={s.id}>
-                        {s.name} · {s.duration_minutes} د
+                        {s.name}
                         {settings.show_prices ? ` · ${priceLabel(s.price, s.price_from)}` : ""}
                       </SelectItem>
                     ))}
@@ -339,13 +319,7 @@ export function BookingFormView({
             {settings.choose_doctor && ready && doctors.length > 1 && (
               <div className="grid gap-1.5">
                 <Label htmlFor={`${uid}-3`}>الطبيب</Label>
-                <Select
-                  value={doctorId}
-                  onValueChange={(v) => {
-                    setDoctorId(v);
-                    resetSlot();
-                  }}
-                >
+                <Select value={doctorId} onValueChange={setDoctorId}>
                   <SelectTrigger id={`${uid}-3`}>
                     <SelectValue />
                   </SelectTrigger>
@@ -367,108 +341,9 @@ export function BookingFormView({
               </p>
             )}
 
-            {!ready ? (
-              <p className="text-sm text-muted-foreground">
-                {askSpecialty && !activeSpecialty ? "اختر التخصص" : "اختر الخدمة"} لعرض المواعيد
-                المتاحة.
-              </p>
-            ) : !preview && slots.isLoading ? (
-              <p className="flex items-center gap-2 text-sm text-muted-foreground">
-                <LoaderCircle className="size-4 animate-spin" />
-                جارٍ تحميل المواعيد المتاحة…
-              </p>
-            ) : !preview && slots.isError ? (
-              <p className="text-sm text-destructive">
-                تعذّر تحميل المواعيد.{" "}
-                <button type="button" className="underline" onClick={() => void slots.refetch()}>
-                  إعادة المحاولة
-                </button>
-              </p>
-            ) : days.length === 0 ? (
-              <p className="rounded-xl bg-muted/60 p-3 text-sm text-muted-foreground">
-                لا توجد مواعيد متاحة خلال الفترة القادمة. جرّب{" "}
-                {settings.choose_doctor ? "طبيبًا أو " : ""}
-                خدمة أخرى، أو تواصل مع العيادة
-                {form.clinic?.phone ? (
-                  <>
-                    {" "}
-                    على <span dir="ltr">{form.clinic.phone}</span>
-                  </>
-                ) : null}
-                .
-              </p>
-            ) : (
-              <div className="space-y-3">
-                {preview && (
-                  <p className="text-xs text-muted-foreground">
-                    أوقات تجريبية للمعاينة — الرابط الفعلي يعرض الأوقات المتاحة فعلًا.
-                  </p>
-                )}
-                <div
-                  className="-mx-1 flex gap-2 overflow-x-auto px-1 pb-1"
-                  role="listbox"
-                  aria-label="اليوم"
-                >
-                  {days.map((d) => {
-                    const label = dayLabel(d);
-                    const selected = d === activeDay;
-                    return (
-                      <button
-                        key={d}
-                        type="button"
-                        role="option"
-                        aria-selected={selected}
-                        onClick={() => {
-                          setDay(d);
-                          resetSlot();
-                        }}
-                        className={cn(
-                          "flex min-w-[4.5rem] shrink-0 flex-col items-center rounded-xl border px-3 py-2 text-xs transition-colors",
-                          selected
-                            ? "border-primary bg-primary text-primary-foreground shadow-soft"
-                            : "border-border bg-surface hover:border-border-strong hover:bg-accent",
-                        )}
-                      >
-                        <span className="font-bold">{label.top}</span>
-                        <span className={cn("tabular", !selected && "text-muted-foreground")}>
-                          {label.bottom}
-                        </span>
-                      </button>
-                    );
-                  })}
-                </div>
-                <div
-                  className="grid grid-cols-3 gap-2 sm:grid-cols-4"
-                  role="listbox"
-                  aria-label="الوقت"
-                >
-                  {times.map((t) => {
-                    const selected = t === activeTime;
-                    return (
-                      <button
-                        key={t}
-                        type="button"
-                        role="option"
-                        aria-selected={selected}
-                        onClick={() => {
-                          setDay(activeDay);
-                          setTime(t);
-                          setErrors(({ appointment: _drop, ...rest }) => rest);
-                        }}
-                        className={cn(
-                          "tabular rounded-xl border py-2 text-sm font-semibold transition-colors",
-                          selected
-                            ? "border-primary bg-primary text-primary-foreground shadow-soft"
-                            : "border-border bg-surface text-foreground hover:border-border-strong hover:bg-accent",
-                        )}
-                      >
-                        {formatTime(t)}
-                      </button>
-                    );
-                  })}
-                </div>
-              </div>
-            )}
+            <p className="text-xs leading-relaxed text-muted-foreground">
+              لا تحتاج لاختيار يوم أو وقت: يحدد المجمع معك الموعد المناسب بعد إرسال الطلب.
+            </p>
             {errors["appointment"] && (
               <p className="text-xs font-medium text-destructive">{errors["appointment"]}</p>
             )}
@@ -485,20 +360,75 @@ export function BookingFormView({
       )}
 
       {errors["_form"] && (
-        <p className="rounded-xl border border-destructive/25 bg-destructive-soft p-3 text-sm text-destructive">
+        <p
+          role="alert"
+          className="rounded-xl border border-destructive/25 bg-destructive-soft p-3 text-sm text-destructive"
+        >
           {errors["_form"]}
         </p>
       )}
 
-      <Button type="submit" size="lg" className="w-full" disabled={preview || submit.isPending}>
-        {submit.isPending ? "جارٍ تأكيد الحجز…" : "تأكيد الحجز"}
+      {!preview && !hasWhatsApp && <NoWhatsApp phone={form.clinic?.phone ?? null} before />}
+
+      <Button
+        type="submit"
+        size="lg"
+        className={hasWhatsApp ? `w-full ${WHATSAPP_BUTTON}` : "w-full"}
+        disabled={preview || submit.isPending}
+      >
+        {submit.isPending ? (
+          <>
+            <LoaderCircle className="animate-spin" />
+            جارٍ تسجيل طلبك…
+          </>
+        ) : hasWhatsApp ? (
+          <>
+            <MessageCircle />
+            استكمال حجزك عبر واتساب
+          </>
+        ) : (
+          "إرسال طلب الحجز"
+        )}
       </Button>
+      {hasWhatsApp && (
+        <p className="text-center text-xs leading-relaxed text-muted-foreground">
+          نسجّل طلبك أولًا، ثم نفتح لك محادثة واتساب مع المجمع برسالة جاهزة لتحديد الموعد.
+        </p>
+      )}
       {preview && (
         <p className="text-center text-xs text-muted-foreground">
-          معاينة فقط — جرّب الحجز الفعلي من رابط النموذج.
+          معاينة فقط — جرّب إرسال طلب فعلي من رابط النموذج.
         </p>
       )}
     </form>
+  );
+}
+
+/** The clinic hasn't set its WhatsApp number: say so and offer the phone instead. */
+function NoWhatsApp({ phone, before = false }: { phone: string | null; before?: boolean }) {
+  return (
+    <div
+      role="status"
+      className="mx-auto flex max-w-sm gap-2.5 rounded-xl border border-warning/30 bg-warning-soft p-3 text-start text-sm text-warning-foreground"
+    >
+      <TriangleAlert className="mt-0.5 size-4 shrink-0" />
+      <div className="min-w-0 space-y-2">
+        <p>
+          {before
+            ? "التواصل عبر واتساب غير متاح حاليًا. سيُسجَّل طلبك ويتواصل معك المجمع على رقم جوالك."
+            : "رقم واتساب المجمع غير متاح حاليًا، لذلك لم نفتح واتساب. طلبك محفوظ وسيتواصل معك المجمع على رقم جوالك."}
+        </p>
+        {phone && (
+          <a
+            href={`tel:${phone.replace(/[^\d+]/g, "")}`}
+            className="inline-flex items-center gap-1.5 font-semibold underline"
+          >
+            <Phone className="size-3.5" />
+            أو اتصل بنا: <span dir="ltr">{phone}</span>
+          </a>
+        )}
+      </div>
+    </div>
   );
 }
 

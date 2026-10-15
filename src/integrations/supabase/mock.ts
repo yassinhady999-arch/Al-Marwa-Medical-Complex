@@ -277,6 +277,7 @@ const MOCK: Record<string, unknown[]> = {
       id: "clinic-1",
       clinic_name: "مجمع المروة السيل الطبي",
       phone: "+966112345678",
+      whatsapp_number: "0566684827",
       email: "info@nukhba.sa",
       city: "الرياض",
       address: "طريق الملك فهد، حي العليا",
@@ -1063,7 +1064,7 @@ const MOCK: Record<string, unknown[]> = {
           required: true,
           placeholder: "05xxxxxxxx",
         },
-        { id: "appointment", type: "appointment", label: "اختيار الموعد", required: true },
+        { id: "appointment", type: "appointment", label: "الخدمة المطلوبة", required: true },
         {
           id: "f_source",
           type: "select",
@@ -1092,7 +1093,7 @@ const MOCK: Record<string, unknown[]> = {
         choose_doctor: true,
         booking_window_days: 14,
         show_prices: true,
-        success_message: "تم استلام حجزك ✅ سنرسل لك تأكيد الموعد على واتساب.",
+        success_message: "نرجو الالتزام بالموعد بعد تأكيده، والاعتذار قبل الموعد بيوم على الأقل.",
       },
     },
     {
@@ -1108,7 +1109,7 @@ const MOCK: Record<string, unknown[]> = {
         { id: "phone", type: "phone", label: "رقم الجوال", required: true },
         { id: "gender", type: "gender", label: "الجنس", required: false },
         { id: "date_of_birth", type: "date_of_birth", label: "تاريخ الميلاد", required: false },
-        { id: "appointment", type: "appointment", label: "اختيار الموعد", required: true },
+        { id: "appointment", type: "appointment", label: "الخدمة المطلوبة", required: true },
       ],
       settings: {
         specialty_ids: [],
@@ -1125,6 +1126,14 @@ const MOCK: Record<string, unknown[]> = {
       id: "fs1",
       form_id: "f1",
       form_title: "حجز كشف الأسنان",
+      request_number: "REQ-26-00001",
+      status: "confirmed",
+      specialty_id: "sp1",
+      service_id: "sv1",
+      doctor_id: "d1",
+      specialties: { name: "طب الأسنان" },
+      services: { name: "كشف أسنان" },
+      doctors: { name: "د. خالد الغامدي" },
       appointment_id: "a1",
       patient_id: "p1",
       created_at: stamp(60 * 26),
@@ -1151,6 +1160,14 @@ const MOCK: Record<string, unknown[]> = {
       id: "fs2",
       form_id: "f1",
       form_title: "حجز كشف الأسنان",
+      request_number: "REQ-26-00002",
+      status: "confirmed",
+      specialty_id: "sp1",
+      service_id: "sv2",
+      doctor_id: null,
+      specialties: { name: "طب الأسنان" },
+      services: { name: "تنظيف أسنان" },
+      doctors: null,
       appointment_id: "a3",
       patient_id: "p3",
       created_at: stamp(60 * 50),
@@ -1173,6 +1190,51 @@ const MOCK: Record<string, unknown[]> = {
         status: "in_progress",
       },
       patients: P("خالد الدوسري", "+966503334455"),
+    },
+    {
+      id: "fs3",
+      form_id: "f1",
+      form_title: "حجز كشف الأسنان",
+      request_number: "REQ-26-00003",
+      status: "pending_contact",
+      specialty_id: "sp1",
+      service_id: "sv2",
+      doctor_id: "d1",
+      specialties: { name: "طب الأسنان" },
+      services: { name: "تنظيف أسنان" },
+      doctors: { name: "د. خالد الغامدي" },
+      appointment_id: null,
+      appointments: null,
+      patient_id: "p2",
+      created_at: stamp(25),
+      answers: [
+        { field_id: "full_name", label: "الاسم الكامل", type: "full_name", value: "سارة العتيبي" },
+        { field_id: "phone", label: "رقم الجوال", type: "phone", value: "0502223344" },
+        { field_id: "notes", label: "ملاحظات", type: "notes", value: "أفضّل الفترة المسائية" },
+      ],
+      patients: P("سارة العتيبي", "+966502223344"),
+    },
+    {
+      id: "fs4",
+      form_id: "f1",
+      form_title: "حجز كشف الأسنان",
+      request_number: "REQ-26-00004",
+      status: "contacted",
+      specialty_id: "sp1",
+      service_id: "sv1",
+      doctor_id: null,
+      specialties: { name: "طب الأسنان" },
+      services: { name: "كشف أسنان" },
+      doctors: null,
+      appointment_id: null,
+      appointments: null,
+      patient_id: "p4",
+      created_at: stamp(60 * 3),
+      answers: [
+        { field_id: "full_name", label: "الاسم الكامل", type: "full_name", value: "نورة الحربي" },
+        { field_id: "phone", label: "رقم الجوال", type: "phone", value: "0504445566" },
+      ],
+      patients: P("نورة الحربي", "+966504445566"),
     },
   ],
   chatbot_settings: [
@@ -1574,22 +1636,24 @@ function formScope(form: Row) {
   const ids = (k: string) => (Array.isArray(settings[k]) ? (settings[k] as unknown[]) : []);
   const allowSpec = (id: unknown) =>
     ids("specialty_ids").length === 0 || (id != null && ids("specialty_ids").includes(id));
-  // Bookable = active with a weekly schedule; hidden ones are booked but never listed by name.
+  // Requests need no weekly schedule (the clinic sets the time); hidden names are never listed.
   const doctors = rowsOf("doctors").filter(
     (d) =>
       d["status"] === "active" &&
-      ((d["doctor_schedules"] ?? []) as Row[]).some((s) => s["is_active"] !== false) &&
       (ids("specialty_ids").length === 0 || mockDepts(d).some((id) => allowSpec(id))),
   );
-  const hasDoctor = (id: unknown) => doctors.some((d) => mockDepts(d).includes(id));
   const services = rowsOf("services").filter(
     (v) =>
       v["is_active"] !== false &&
       allowSpec(v["specialty_id"] ?? null) &&
-      (ids("service_ids").length === 0 || ids("service_ids").includes(v["id"])) &&
-      (v["specialty_id"] == null || hasDoctor(v["specialty_id"])),
+      (ids("service_ids").length === 0 || ids("service_ids").includes(v["id"])),
   );
-  return { settings, allowSpec, doctors, hasDoctor, services };
+  return { settings, allowSpec, doctors, services };
+}
+
+function answerOf(r: Row, type: string): string | null {
+  const a = ((r["answers"] ?? []) as Row[]).find((x) => x["type"] === type);
+  return a ? String(a["value"] ?? "") : null;
 }
 
 function activeForm(slug: unknown) {
@@ -1602,7 +1666,7 @@ function mockPublicRpc(fn: string, args: Row): { handled: boolean; value?: unkno
   if (fn === "get_public_booking_form") {
     const form = activeForm(args["_slug"]);
     if (!form) return { handled: true, value: null };
-    const { allowSpec, doctors, hasDoctor, services } = formScope(form);
+    const { allowSpec, doctors, services } = formScope(form);
     return {
       handled: true,
       value: {
@@ -1618,9 +1682,13 @@ function mockPublicRpc(fn: string, args: Row): { handled: boolean; value?: unkno
           address: clinic["address"],
           city: clinic["city"],
           logo_url: null,
+          whatsapp:
+            String(clinic["whatsapp_number"] ?? "").trim() ||
+            String(clinic["phone"] ?? "").trim() ||
+            null,
         },
         specialties: rowsOf("specialties")
-          .filter((s) => s["is_active"] !== false && allowSpec(s["id"]) && hasDoctor(s["id"]))
+          .filter((s) => s["is_active"] !== false && allowSpec(s["id"]))
           .map((s) => ({ id: s["id"], name: s["name"] })),
         services: services.map((v) => ({
           id: v["id"],
@@ -1643,72 +1711,53 @@ function mockPublicRpc(fn: string, args: Row): { handled: boolean; value?: unkno
     };
   }
 
-  if (fn === "get_public_booking_availability" || fn === "submit_public_booking") {
+  if (fn === "get_public_booking_availability") return { handled: true, value: [] };
+
+  if (fn === "submit_booking_request" || fn === "submit_public_booking") {
     const form = activeForm(args["_slug"]);
+    if (!form) throw new MockRpcError("FORM_UNAVAILABLE: هذا النموذج غير متاح حاليًا");
     const payload = (args["_payload"] ?? {}) as Row;
-    const source =
-      fn === "submit_public_booking"
-        ? payload
-        : {
-            service_id: args["_service_id"],
-            doctor_id: args["_doctor_id"],
-            specialty_id: args["_specialty_id"],
-          };
-    if (!form) {
-      if (fn === "get_public_booking_availability") return { handled: true, value: [] };
-      throw new MockRpcError("FORM_UNAVAILABLE: هذا النموذج غير متاح حاليًا");
-    }
-    const { settings, doctors, services } = formScope(form);
-    const service = services.find((v) => v["id"] === source["service_id"]);
-    const duration = Number(service?.["duration_minutes"] ?? 30);
-    const spec = service ? (service["specialty_id"] ?? null) : (source["specialty_id"] ?? null);
-    const chosen = settings["choose_doctor"] !== false ? (source["doctor_id"] ?? null) : null;
-    const candidates = doctors.filter(
-      (d) =>
-        (spec == null || mockDepts(d).includes(spec)) && (chosen == null || d["id"] === chosen),
-    );
-    const windowDays = Number(settings["booking_window_days"] ?? 21);
-
-    if (fn === "get_public_booking_availability") {
-      const rows: { day: string; slot_time: string }[] = [];
-      for (let i = 0; i < windowDays; i++) {
-        const day = iso(i);
-        const times = new Set(candidates.flatMap((d) => mockSlots(d["id"], day, duration)));
-        [...times].sort().forEach((slot_time) => rows.push({ day, slot_time }));
-      }
-      return { handled: true, value: rows };
-    }
-
-    // submit_public_booking
     const answers = (payload["answers"] ?? {}) as Record<string, string>;
-    const key = `form:${String(payload["request_id"] ?? newId())}`;
-    const confirm = (a: Row, duplicate: boolean) => ({
-      appointment_number: a["appointment_number"],
-      date: a["appointment_date"],
-      start_time: a["start_time"],
-      end_time: a["end_time"],
-      doctor_name:
-        rowsOf("doctors").find((d) => d["id"] === a["doctor_id"])?.["hide_name"] === true
-          ? null
-          : ((a["doctors"] as Row | null)?.["name"] ?? null),
-      service_name: (a["services"] as Row | null)?.["name"] ?? null,
+    const key = `request:${String(payload["request_id"] ?? newId())}`;
+    const { settings, doctors, services } = formScope(form);
+    const confirm = (r: Row, duplicate: boolean) => ({
+      request_number: r["request_number"],
+      status: r["status"],
+      created_at: r["created_at"],
+      patient_name: answerOf(r, "full_name"),
+      phone: answerOf(r, "phone"),
+      specialty_name: (r["specialties"] as Row | null)?.["name"] ?? null,
+      service_name: (r["services"] as Row | null)?.["name"] ?? null,
+      doctor_name: (r["doctors"] as Row | null)?.["name"] ?? null,
       success_message: settings["success_message"] ?? null,
+      clinic_whatsapp:
+        String(clinic["whatsapp_number"] ?? "").trim() ||
+        String(clinic["phone"] ?? "").trim() ||
+        null,
+      clinic_phone: clinic["phone"] ?? null,
       duplicate,
     });
-    const existing = rowsOf("appointments").find((a) => a["idempotency_key"] === key);
+    const existing = rowsOf("booking_form_submissions").find((r) => r["request_key"] === key);
     if (existing) return { handled: true, value: confirm(existing, true) };
     for (const f of (form["fields"] ?? []) as Row[]) {
-      if (f["type"] === "appointment" || !f["required"]) continue;
+      if (f["type"] === "appointment") continue;
+      if (!f["required"] && f["type"] !== "full_name" && f["type"] !== "phone") continue;
       const v = String(answers[String(f["id"])] ?? "").trim();
       if (!v || (f["type"] === "checkbox" && v !== "true"))
         throw new MockRpcError(`REQUIRED_FIELD: يرجى تعبئة «${String(f["label"])}»`);
     }
-    const start = `${String(payload["time"] ?? "")}:00`;
-    const day = String(payload["date"] ?? "");
-    const doctor = candidates.find((d) => mockSlots(d["id"], day, duration).includes(start));
-    if (!doctor) throw new MockRpcError("SLOT_TAKEN: هذا الموعد لم يعد متاحًا، اختر وقتًا آخر");
     const name = String(answers["full_name"] ?? "").trim();
     const phone = String(answers["phone"] ?? "").trim();
+    if (phone.replace(/\D/g, "").length < 9)
+      throw new MockRpcError("INVALID_PHONE: رقم الجوال غير صحيح");
+    const service = services.find((v) => v["id"] === payload["service_id"]) ?? null;
+    if (payload["service_id"] && !service)
+      throw new MockRpcError("INVALID_SERVICE: الخدمة المختارة غير متاحة");
+    const specId = service ? (service["specialty_id"] ?? null) : (payload["specialty_id"] ?? null);
+    const doctor =
+      settings["choose_doctor"] !== false && payload["doctor_id"]
+        ? doctors.find((d) => d["id"] === payload["doctor_id"] && d["hide_name"] !== true)
+        : null;
     const tail = phone.replace(/\D/g, "").slice(-9);
     let patient = rowsOf("patients").find((x) =>
       String(x["phone"]).replace(/\D/g, "").endsWith(tail),
@@ -1727,31 +1776,23 @@ function mockPublicRpc(fn: string, args: Row): { handled: boolean; value?: unkno
       };
       persist("patients", patient);
     }
-    const appointment: Row = {
-      id: newId(),
-      appointment_number: "APT-26-" + String(Math.floor(Math.random() * 900000) + 100000),
-      appointment_date: day,
-      start_time: start,
-      end_time: toTime(toMinutes(start) + duration),
-      status: "pending",
-      source: "website",
-      price: service?.["price"] ?? 0,
-      notes: `حجز عبر نموذج «${String(form["title"])}»`,
-      idempotency_key: key,
-      patient_id: patient["id"],
-      doctor_id: doctor["id"],
-      service_id: service?.["id"] ?? null,
-      specialty_id: spec ?? doctor["specialty_id"] ?? null,
-      patients: P(String(patient["full_name"]), String(patient["phone"])),
-      doctors: { name: doctor["name"] },
-      services: service ? { name: service["name"] } : null,
-    };
-    persist("appointments", appointment);
-    persist("booking_form_submissions", {
+    const spec = rowsOf("specialties").find((x) => x["id"] === specId);
+    const number = rowsOf("booking_form_submissions").length + 1;
+    const request: Row = {
       id: newId(),
       form_id: form["id"],
       form_title: form["title"],
-      appointment_id: appointment["id"],
+      request_number: `REQ-26-${String(number).padStart(5, "0")}`,
+      request_key: key,
+      status: "pending_contact",
+      specialty_id: specId,
+      service_id: service?.["id"] ?? null,
+      doctor_id: doctor?.["id"] ?? null,
+      specialties: spec ? { name: spec["name"] } : null,
+      services: service ? { name: service["name"] } : null,
+      doctors: doctor ? { name: doctor["name"] } : null,
+      appointment_id: null,
+      appointments: null,
       patient_id: patient["id"],
       created_at: new Date().toISOString(),
       answers: ((form["fields"] ?? []) as Row[])
@@ -1762,23 +1803,89 @@ function mockPublicRpc(fn: string, args: Row): { handled: boolean; value?: unkno
           type: f["type"],
           value: answers[String(f["id"])],
         })),
+      patients: P(String(patient["full_name"]), String(patient["phone"])),
+    };
+    persist("booking_form_submissions", request);
+    persist("notifications", {
+      id: newId(),
+      type: "booking_request.created",
+      title: "حجز محتمل جديد",
+      message: `${name}${service ? ` — ${String(service["name"])}` : ""}`,
+      is_read: false,
+      created_at: new Date().toISOString(),
+    });
+    return { handled: true, value: confirm(request, false) };
+  }
+
+  if (fn === "set_booking_request_status") {
+    const r = rowsOf("booking_form_submissions").find((x) => x["id"] === args["_request_id"]);
+    if (!r) throw new MockRpcError("NOT_FOUND: الطلب غير موجود");
+    if (r["status"] === "confirmed")
+      throw new MockRpcError(
+        "ALREADY_CONFIRMED: هذا الطلب تأكّد وأصبح موعدًا، عدّل الموعد نفسه من التقويم",
+      );
+    Object.assign(r, { status: args["_status"], status_changed_at: new Date().toISOString() });
+    return { handled: true, value: { id: r["id"], status: r["status"] } };
+  }
+
+  if (fn === "confirm_booking_request") {
+    const r = rowsOf("booking_form_submissions").find((x) => x["id"] === args["_request_id"]);
+    if (!r) throw new MockRpcError("NOT_FOUND: الطلب غير موجود");
+    const doctor = rowsOf("doctors").find((d) => d["id"] === args["_doctor_id"]);
+    if (!doctor) throw new MockRpcError("INVALID_DOCTOR: اختر الطبيب");
+    const service = rowsOf("services").find((v) => v["id"] === args["_service_id"]) ?? null;
+    const duration = Number(service?.["duration_minutes"] ?? 30);
+    const day = String(args["_date"] ?? "");
+    const start = `${String(args["_time"] ?? "").slice(0, 5)}:00`;
+    if (!mockSlots(doctor["id"], day, duration).includes(start))
+      throw new MockRpcError("DOUBLE_BOOKING: الوقت غير متاح لهذا الطبيب");
+    const patient = rowsOf("patients").find((x) => x["id"] === r["patient_id"]);
+    const appointment: Row = {
+      id: newId(),
+      appointment_number: "APT-26-" + String(Math.floor(Math.random() * 900000) + 100000),
+      appointment_date: day,
+      start_time: start,
+      end_time: toTime(toMinutes(start) + duration),
+      status: "confirmed",
+      source: "website",
+      price: service?.["price"] ?? 0,
+      notes: `من طلب الحجز ${String(r["request_number"])}`,
+      idempotency_key: `request:${String(r["id"])}`,
+      patient_id: r["patient_id"],
+      doctor_id: doctor["id"],
+      service_id: service?.["id"] ?? null,
+      specialty_id: service?.["specialty_id"] ?? r["specialty_id"] ?? null,
+      patients: patient ? P(String(patient["full_name"]), String(patient["phone"])) : null,
+      doctors: { name: doctor["name"] },
+      services: service ? { name: service["name"] } : null,
+    };
+    persist("appointments", appointment);
+    Object.assign(r, {
+      status: "confirmed",
+      appointment_id: appointment["id"],
       appointments: {
         appointment_number: appointment["appointment_number"],
         appointment_date: day,
         start_time: start,
-        status: "pending",
       },
-      patients: appointment["patients"],
     });
-    persist("notifications", {
-      id: newId(),
-      type: "appointment.created",
-      title: "موعد جديد",
-      message: `${String(patient["full_name"])} — ${String(appointment["appointment_number"])}`,
-      is_read: false,
-      created_at: new Date().toISOString(),
-    });
-    return { handled: true, value: confirm(appointment, false) };
+    return {
+      handled: true,
+      value: {
+        appointment_id: appointment["id"],
+        appointment_number: appointment["appointment_number"],
+      },
+    };
+  }
+
+  if (fn === "get_available_slots") {
+    const duration = Number(args["_duration"] ?? 30);
+    return {
+      handled: true,
+      value: mockSlots(args["_doctor_id"], String(args["_date"] ?? ""), duration).map(
+        (slot_time) => ({ slot_time }),
+      ),
+    };
   }
 
   if (fn === "get_public_chatbot") {

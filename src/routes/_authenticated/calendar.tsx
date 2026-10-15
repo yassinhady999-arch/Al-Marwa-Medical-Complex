@@ -12,6 +12,7 @@ import type { AppointmentStatus } from "@/lib/clinic";
 import { cn } from "@/lib/utils";
 import { AppointmentFilterBar, useAppointmentFilters } from "@/components/app/appointment-filters";
 import { EditAppointmentDialog } from "@/components/app/edit-appointment-dialog";
+import { NewAppointmentDialog } from "@/components/app/new-appointment-dialog";
 import { useProfile } from "@/hooks/use-auth";
 
 export const Route = createFileRoute("/_authenticated/calendar")({
@@ -81,26 +82,29 @@ function CalendarPage() {
       description={`الأسبوع ${weekStart} — ${weekEnd}`}
       section="calendar"
       actions={
-        <div className="flex items-center gap-1 rounded-xl border border-border bg-surface p-1">
-          <Button
-            variant="ghost"
-            size="icon-sm"
-            aria-label="الأسبوع السابق"
-            onClick={() => setAnchor(addDays(weekStart, -7))}
-          >
-            <ChevronRight className="size-4" />
-          </Button>
-          <Button variant="ghost" size="sm" onClick={() => setAnchor(todayRiyadh())}>
-            اليوم
-          </Button>
-          <Button
-            variant="ghost"
-            size="icon-sm"
-            aria-label="الأسبوع التالي"
-            onClick={() => setAnchor(addDays(weekStart, 7))}
-          >
-            <ChevronLeft className="size-4" />
-          </Button>
+        <div className="flex flex-wrap items-center gap-2">
+          {me?.canWrite && <NewAppointmentDialog defaultDate={todayRiyadh()} />}
+          <div className="flex items-center gap-1 rounded-xl border border-border bg-surface p-1">
+            <Button
+              variant="ghost"
+              size="icon-sm"
+              aria-label="الأسبوع السابق"
+              onClick={() => setAnchor(addDays(weekStart, -7))}
+            >
+              <ChevronRight className="size-4" />
+            </Button>
+            <Button variant="ghost" size="sm" onClick={() => setAnchor(todayRiyadh())}>
+              اليوم
+            </Button>
+            <Button
+              variant="ghost"
+              size="icon-sm"
+              aria-label="الأسبوع التالي"
+              onClick={() => setAnchor(addDays(weekStart, 7))}
+            >
+              <ChevronLeft className="size-4" />
+            </Button>
+          </div>
         </div>
       }
     >

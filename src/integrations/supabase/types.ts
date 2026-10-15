@@ -285,28 +285,52 @@ export type Database = {
           answers: Json;
           appointment_id: string | null;
           created_at: string;
+          doctor_id: string | null;
           form_id: string | null;
           form_title: string;
           id: string;
           patient_id: string | null;
+          request_key: string | null;
+          request_number: string | null;
+          service_id: string | null;
+          specialty_id: string | null;
+          status: string;
+          status_changed_at: string | null;
+          status_changed_by: string | null;
         };
         Insert: {
           answers?: Json;
           appointment_id?: string | null;
           created_at?: string;
+          doctor_id?: string | null;
           form_id?: string | null;
           form_title?: string;
           id?: string;
           patient_id?: string | null;
+          request_key?: string | null;
+          request_number?: string | null;
+          service_id?: string | null;
+          specialty_id?: string | null;
+          status?: string;
+          status_changed_at?: string | null;
+          status_changed_by?: string | null;
         };
         Update: {
           answers?: Json;
           appointment_id?: string | null;
           created_at?: string;
+          doctor_id?: string | null;
           form_id?: string | null;
           form_title?: string;
           id?: string;
           patient_id?: string | null;
+          request_key?: string | null;
+          request_number?: string | null;
+          service_id?: string | null;
+          specialty_id?: string | null;
+          status?: string;
+          status_changed_at?: string | null;
+          status_changed_by?: string | null;
         };
         Relationships: [
           {
@@ -328,6 +352,27 @@ export type Database = {
             columns: ["patient_id"];
             isOneToOne: false;
             referencedRelation: "patients";
+            referencedColumns: ["id"];
+          },
+          {
+            foreignKeyName: "booking_form_submissions_doctor_id_fkey";
+            columns: ["doctor_id"];
+            isOneToOne: false;
+            referencedRelation: "doctors";
+            referencedColumns: ["id"];
+          },
+          {
+            foreignKeyName: "booking_form_submissions_service_id_fkey";
+            columns: ["service_id"];
+            isOneToOne: false;
+            referencedRelation: "services";
+            referencedColumns: ["id"];
+          },
+          {
+            foreignKeyName: "booking_form_submissions_specialty_id_fkey";
+            columns: ["specialty_id"];
+            isOneToOne: false;
+            referencedRelation: "specialties";
             referencedColumns: ["id"];
           },
         ];
@@ -553,6 +598,7 @@ export type Database = {
           phone: string | null;
           timezone: string;
           updated_at: string;
+          whatsapp_number: string | null;
           working_hours: Json;
         };
         Insert: {
@@ -569,6 +615,7 @@ export type Database = {
           phone?: string | null;
           timezone?: string;
           updated_at?: string;
+          whatsapp_number?: string | null;
           working_hours?: Json;
         };
         Update: {
@@ -585,6 +632,7 @@ export type Database = {
           phone?: string | null;
           timezone?: string;
           updated_at?: string;
+          whatsapp_number?: string | null;
           working_hours?: Json;
         };
         Relationships: [];
@@ -1258,6 +1306,18 @@ export type Database = {
         Returns: string;
       };
       submit_public_booking: { Args: { _payload: Json; _slug: string }; Returns: Json };
+      submit_booking_request: { Args: { _payload: Json; _slug: string }; Returns: Json };
+      set_booking_request_status: { Args: { _request_id: string; _status: string }; Returns: Json };
+      confirm_booking_request: {
+        Args: {
+          _date: string;
+          _doctor_id: string;
+          _request_id: string;
+          _service_id: string | null;
+          _time: string;
+        };
+        Returns: Json;
+      };
     };
     Enums: {
       app_role: "owner" | "admin" | "receptionist" | "doctor" | "viewer";

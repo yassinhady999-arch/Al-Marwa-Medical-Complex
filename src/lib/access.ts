@@ -3,7 +3,7 @@
 /** Sections an employee can be granted or denied access to. */
 export const SECTIONS = [
   { key: "dashboard", label: "لوحة التشغيل" },
-  { key: "appointments", label: "المواعيد" },
+  { key: "appointments", label: "الحجوزات" },
   { key: "calendar", label: "التقويم" },
   { key: "forms", label: "نماذج الحجز" },
   { key: "patients", label: "المرضى" },

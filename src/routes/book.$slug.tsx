@@ -13,7 +13,10 @@ export const Route = createFileRoute("/book/$slug")({
   head: () => ({
     meta: [
       { title: "حجز موعد" },
-      { name: "description", content: "احجز موعدك في العيادة واختر الوقت المناسب لك." },
+      {
+        name: "description",
+        content: "أرسل طلب حجز للمجمع وأكمل تحديد موعدك عبر واتساب.",
+      },
       { name: "robots", content: "noindex" },
     ],
   }),

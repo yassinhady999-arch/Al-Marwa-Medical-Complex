@@ -1,7 +1,17 @@
-import { createFileRoute } from "@tanstack/react-router";
+import { createFileRoute, Link } from "@tanstack/react-router";
 import { useQuery } from "@tanstack/react-query";
 import { useMemo, useState } from "react";
-import { CalendarCheck2, CheckCircle2, XCircle, Wallet, BarChart3 } from "lucide-react";
+import {
+  ArrowLeft,
+  BarChart3,
+  CalendarCheck2,
+  CheckCircle2,
+  Clock,
+  Inbox,
+  PhoneCall,
+  Wallet,
+  XCircle,
+} from "lucide-react";
 import {
   Area,
   AreaChart,
@@ -35,12 +45,29 @@ import {
   ChartFrame,
   ChartLegend,
 } from "@/components/app/chart-kit";
-import { STATUS_META, SOURCE_META, TONE_HEX, formatDate, percent, todayRiyadh } from "@/lib/clinic";
+import {
+  STATUS_META,
+  SOURCE_META,
+  TONE_HEX,
+  formatDate,
+  formatDateTime,
+  formatTime,
+  percent,
+  todayRiyadh,
+} from "@/lib/clinic";
 import type { AppointmentStatus, BookingSource } from "@/lib/clinic";
 import {
   AppointmentFilterFields,
   useAppointmentFilters,
+  type FilterableAppointment,
 } from "@/components/app/appointment-filters";
+import { RequestStatusBadge } from "@/components/app/booking-requests";
+import {
+  REQUEST_STATUSES,
+  REQUEST_STATUS_META,
+  requestStatus,
+  type BookingRequestStatus,
+} from "@/lib/booking-forms";
 
 export const Route = createFileRoute("/_authenticated/analytics")({
   head: () => ({
@@ -48,7 +75,7 @@ export const Route = createFileRoute("/_authenticated/analytics")({
       { title: "التقارير | نظام تشغيل العيادة" },
       {
         name: "description",
-        content: "تحليلات المواعيد والإيرادات ومصادر الحجز خلال آخر 30 يومًا.",
+        content: "تحليلات الحجوزات المحتملة والمواعيد والإيرادات ومصادر الحجز.",
       },
       { property: "og:title", content: "التقارير | نظام تشغيل العيادة" },
       { property: "og:description", content: "تحليلات المواعيد والإيرادات ومصادر الحجز." },
@@ -243,6 +270,15 @@ function AnalyticsPage() {
         </p>
       </div>
 
+      <RequestsReport from={from} to={to} matches={matches} />
+
+      <div className="mb-4 mt-8">
+        <h2 className="text-lg font-bold text-foreground">المواعيد</h2>
+        <p className="text-xs text-muted-foreground">
+          المواعيد المحجوزة فعلًا (ومنها الحجوزات المحتملة بعد تأكيدها)، بحسب تاريخ الموعد.
+        </p>
+      </div>
+
       {isLoading ? (
         <div className="space-y-4">
           <StatGridSkeleton count={4} />
@@ -345,6 +381,210 @@ function AnalyticsPage() {
         </div>
       )}
     </AppShell>
+  );
+}
+
+/** «الحجوزات المحتملة» in the report: every request from the booking form in the period. */
+function RequestsReport({
+  from,
+  to,
+  matches,
+}: {
+  from: string;
+  to: string;
+  matches: (r: FilterableAppointment) => boolean;
+}) {
+  const { data, isLoading } = useQuery({
+    queryKey: ["booking-requests", "report", from, to],
+    queryFn: async () => {
+      // The period is in Riyadh days; created_at is a timestamp.
+      const start = new Date(`${from}T00:00:00+03:00`).toISOString();
+      const end = new Date(`${to}T23:59:59.999+03:00`).toISOString();
+      const { data, error } = await supabase
+        .from("booking_form_submissions")
+        .select(
+          "id, request_number, status, created_at, answers, specialty_id, service_id, doctor_id, specialties(name), services(name), doctors(name), appointments(appointment_number, appointment_date, start_time)",
+        )
+        .gte("created_at", start)
+        .lte("created_at", end)
+        .order("created_at", { ascending: false })
+        .limit(1000);
+      if (error) throw error;
+      return data ?? [];
+    },
+  });
+
+  const rows = (data ?? []).filter(matches).map((r) => {
+    const answers = (Array.isArray(r.answers) ? r.answers : []) as {
+      type?: string;
+      value?: string;
+    }[];
+    const nameOf = (v: unknown) => (v as { name?: string } | null)?.name ?? null;
+    return {
+      id: r.id,
+      number: r.request_number ?? "—",
+      status: requestStatus(r.status),
+      createdAt: r.created_at,
+      name: answers.find((a) => a.type === "full_name")?.value ?? "—",
+      phone: answers.find((a) => a.type === "phone")?.value ?? "—",
+      service: nameOf(r.services) ?? nameOf(r.specialties) ?? "غير محدد",
+      doctor: nameOf(r.doctors),
+      appointment: r.appointments as unknown as {
+        appointment_number: string;
+        appointment_date: string;
+        start_time: string;
+      } | null,
+    };
+  });
+  const count = (s: BookingRequestStatus) => rows.filter((r) => r.status === s).length;
+  const confirmed = count("confirmed");
+  const conversion = rows.length ? confirmed / rows.length : 0;
+
+  const byStatus = REQUEST_STATUSES.map((s) => ({
+    name: REQUEST_STATUS_META[s].label,
+    value: count(s),
+    color: TONE_HEX[REQUEST_STATUS_META[s].tone],
+  })).filter((d) => d.value > 0);
+  const byService = Object.entries(
+    rows.reduce<Record<string, number>>((acc, r) => {
+      acc[r.service] = (acc[r.service] ?? 0) + 1;
+      return acc;
+    }, {}),
+  )
+    .sort(([, a], [, b]) => b - a)
+    .map(([name, value]) => ({ name, value }));
+
+  return (
+    <section aria-labelledby="report-requests" className="space-y-4">
+      <div className="flex flex-wrap items-end justify-between gap-2">
+        <div>
+          <h2 id="report-requests" className="text-lg font-bold text-foreground">
+            الحجوزات المحتملة
+          </h2>
+          <p className="text-xs text-muted-foreground">
+            كل من طلب استكمال الحجز عبر واتساب من نموذج الحجز خلال الفترة، بحسب تاريخ الطلب.
+          </p>
+        </div>
+        <Link
+          to="/appointments"
+          className="inline-flex items-center gap-1 text-xs font-semibold text-primary-emphasis hover:underline"
+        >
+          متابعتها في قسم الحجوزات
+          <ArrowLeft className="size-3.5" />
+        </Link>
+      </div>
+
+      {isLoading ? (
+        <StatGridSkeleton count={5} />
+      ) : rows.length === 0 ? (
+        <EmptyState
+          icon={Inbox}
+          title="لا توجد حجوزات محتملة في هذه الفترة"
+          hint="تظهر هنا طلبات نموذج الحجز بكل حالاتها. جرّب فترة زمنية أخرى."
+        />
+      ) : (
+        <>
+          <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5">
+            <StatCard
+              index={0}
+              label="إجمالي الحجوزات المحتملة"
+              value={rows.length}
+              icon={Inbox}
+              tone="chat"
+            />
+            <StatCard
+              index={1}
+              label={REQUEST_STATUS_META.pending_contact.label}
+              value={count("pending_contact")}
+              icon={Clock}
+              tone="warning"
+            />
+            <StatCard
+              index={2}
+              label={REQUEST_STATUS_META.contacted.label}
+              value={count("contacted")}
+              icon={PhoneCall}
+              tone="info"
+            />
+            <StatCard
+              index={3}
+              label={REQUEST_STATUS_META.confirmed.label}
+              value={confirmed}
+              icon={CalendarCheck2}
+              tone="success"
+              hint={`نسبة التحويل إلى موعد ${percent(conversion)}`}
+            />
+            <StatCard
+              index={4}
+              label={REQUEST_STATUS_META.cancelled.label}
+              value={count("cancelled")}
+              icon={XCircle}
+              tone="neutral"
+            />
+          </div>
+
+          <div className="grid gap-4 lg:grid-cols-2">
+            <DonutCard title="الحجوزات المحتملة حسب الحالة" data={byStatus} />
+            <RankCard title="الحجوزات المحتملة حسب الخدمة" data={byService} total={rows.length} />
+          </div>
+
+          <SectionCard
+            title="كل الحجوزات المحتملة"
+            description={`${rows.length} حجز محتمل · ${formatDate(from)} — ${formatDate(to)}`}
+            bodyClassName="p-0"
+          >
+            <div className="overflow-x-auto">
+              <table className="w-full min-w-[760px] whitespace-nowrap text-sm">
+                <thead>
+                  <tr className="border-b border-border text-start text-xs text-muted-foreground">
+                    {[
+                      "رقم الطلب",
+                      "الاسم",
+                      "الجوال",
+                      "الخدمة المطلوبة",
+                      "الطبيب",
+                      "الحالة",
+                      "تاريخ الطلب",
+                      "الموعد",
+                    ].map((h) => (
+                      <th key={h} scope="col" className="px-4 py-2.5 text-start font-medium">
+                        {h}
+                      </th>
+                    ))}
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-border/70">
+                  {rows.map((r) => (
+                    <tr key={r.id} className="align-middle hover:bg-accent/40">
+                      <td className="tabular px-4 py-2.5 font-medium text-foreground">
+                        {r.number}
+                      </td>
+                      <td className="px-4 py-2.5 text-foreground">{r.name}</td>
+                      <td className="tabular px-4 py-2.5 text-muted-foreground" dir="ltr">
+                        {r.phone}
+                      </td>
+                      <td className="px-4 py-2.5 text-foreground">{r.service}</td>
+                      <td className="px-4 py-2.5 text-muted-foreground">{r.doctor ?? "أي طبيب"}</td>
+                      <td className="px-4 py-2.5">
+                        <RequestStatusBadge status={r.status} />
+                      </td>
+                      <td className="tabular px-4 py-2.5 text-muted-foreground">
+                        {formatDateTime(r.createdAt)}
+                      </td>
+                      <td className="tabular px-4 py-2.5 text-muted-foreground">
+                        {r.status === "confirmed" && r.appointment
+                          ? `${formatDate(r.appointment.appointment_date)} · ${formatTime(r.appointment.start_time)}`
+                          : "—"}
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          </SectionCard>
+        </>
+      )}
+    </section>
   );
 }
 

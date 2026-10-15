@@ -38,9 +38,9 @@ import {
 import { EmptyState } from "@/components/app/empty-state";
 import { RowsSkeleton } from "@/components/app/state";
 import { SectionCard } from "@/components/app/section-card";
-import { StatusBadge } from "@/components/app/status-badge";
 import { ShareLink } from "@/components/app/share-link";
 import { EditAppointmentDialog } from "@/components/app/edit-appointment-dialog";
+import { RequestStatusBadge } from "@/components/app/booking-requests";
 import { BookingFormView } from "@/components/booking/booking-form-view";
 import { cn } from "@/lib/utils";
 import {
@@ -51,7 +51,6 @@ import {
   formatRelative,
   formatTime,
 } from "@/lib/clinic";
-import type { AppointmentStatus } from "@/lib/clinic";
 import {
   CUSTOM_FIELD_META,
   CUSTOM_FIELD_TYPES,
@@ -63,6 +62,7 @@ import {
   newCustomField,
   parseFields,
   parseSettings,
+  requestStatus,
   systemField,
   validateForm,
   type FormField,
@@ -106,24 +106,21 @@ async function fetchRefs() {
       .order("name"),
     supabase
       .from("doctors")
-      .select(
-        `id, name, specialty_id, hide_name, ${DOCTOR_DEPARTMENTS}, doctor_schedules(is_active)`,
-      )
+      .select(`id, name, specialty_id, hide_name, ${DOCTOR_DEPARTMENTS}`)
       .eq("status", "active")
       .order("name"),
     supabase
       .from("clinic_settings")
-      .select("clinic_name, phone, address, city, logo_url")
+      .select("clinic_name, phone, address, city, logo_url, whatsapp_number")
       .limit(1)
       .maybeSingle(),
   ]);
   return {
     specialties: specialties.data ?? [],
     services: (services.data ?? []).map((s) => ({ ...s, price: Number(s.price ?? 0) })),
-    doctors: (doctors.data ?? []).map(({ doctor_specialties, doctor_schedules, ...d }) => ({
+    doctors: (doctors.data ?? []).map(({ doctor_specialties, ...d }) => ({
       ...d,
       specialty_ids: departmentIds({ ...d, doctor_specialties }),
-      scheduled: (doctor_schedules ?? []).some((s) => s.is_active),
     })),
     clinic: clinic.data
       ? {
@@ -132,6 +129,7 @@ async function fetchRefs() {
           address: clinic.data.address,
           city: clinic.data.city,
           logo_url: clinic.data.logo_url,
+          whatsapp: clinic.data.whatsapp_number?.trim() || clinic.data.phone?.trim() || null,
         }
       : null,
   };
@@ -204,15 +202,13 @@ function toPreview(draft: Draft, refs: Refs, form: FormRecord): PublicBookingFor
   const { specialty_ids, service_ids } = draft.settings;
   const allowSpecialty = (id: string | null) =>
     specialty_ids.length === 0 || (id !== null && specialty_ids.includes(id));
-  // Only doctors with a weekly schedule can be booked; hidden ones are booked but never named.
-  const bookable = refs.doctors.filter(
-    (d) =>
-      d.scheduled &&
-      (specialty_ids.length === 0 || d.specialty_ids.some((id) => allowSpecialty(id))),
-  );
-  const hasDoctor = (id: string) => bookable.some((d) => d.specialty_ids.includes(id));
-  const doctors = bookable
-    .filter((d) => !d.hide_name)
+  // Requests need no weekly schedule (the clinic sets the time); hidden names are never listed.
+  const doctors = refs.doctors
+    .filter(
+      (d) =>
+        !d.hide_name &&
+        (specialty_ids.length === 0 || d.specialty_ids.some((id) => allowSpecialty(id))),
+    )
     .map(({ id, name, specialty_id, specialty_ids }) => ({
       id,
       name,
@@ -227,12 +223,10 @@ function toPreview(draft: Draft, refs: Refs, form: FormRecord): PublicBookingFor
     fields: draft.fields,
     settings: draft.settings,
     clinic: refs.clinic,
-    specialties: refs.specialties.filter((s) => allowSpecialty(s.id) && hasDoctor(s.id)),
+    specialties: refs.specialties.filter((s) => allowSpecialty(s.id)),
     services: refs.services.filter(
       (s) =>
-        allowSpecialty(s.specialty_id) &&
-        (service_ids.length === 0 || service_ids.includes(s.id)) &&
-        (s.specialty_id === null || hasDoctor(s.specialty_id)),
+        allowSpecialty(s.specialty_id) && (service_ids.length === 0 || service_ids.includes(s.id)),
     ),
     doctors,
   };
@@ -376,7 +370,7 @@ function FormBuilder({ form, refs }: { form: FormRecord; refs: Refs }) {
           </TabsTrigger>
           <TabsTrigger value="submissions">
             <Inbox className="size-4" />
-            الحجوزات
+            الطلبات
           </TabsTrigger>
         </TabsList>
 
@@ -727,7 +721,7 @@ function SettingsPanel({
             />
           </div>
           <div className="grid gap-1.5">
-            <Label htmlFor={`${uid}-3`}>رسالة تظهر بعد الحجز</Label>
+            <Label htmlFor={`${uid}-3`}>رسالة إضافية تظهر بعد إرسال الطلب</Label>
             <Textarea
               id={`${uid}-3`}
               rows={2}
@@ -739,7 +733,7 @@ function SettingsPanel({
         </div>
       </SectionCard>
 
-      <SectionCard icon={CalendarCheck} title="الموعد">
+      <SectionCard icon={CalendarCheck} title="الخدمات المتاحة للطلب">
         <div className="grid gap-5">
           <div className="grid gap-2" role="group" aria-labelledby={`${uid}-specialties`}>
             <p id={`${uid}-specialties`} className="text-sm font-medium">
@@ -809,7 +803,7 @@ function SettingsPanel({
             <span>
               <span className="block text-sm font-semibold">العميل يختار الطبيب</span>
               <span className="text-xs text-muted-foreground">
-                عند الإيقاف يُحجز تلقائيًا مع الطبيب الأقل انشغالًا المتاح في الوقت المختار.
+                عند الإيقاف لا يظهر حقل الطبيب، ويحدد المجمع الطبيب عند تأكيد الموعد.
               </span>
             </span>
             <Switch
@@ -828,24 +822,6 @@ function SettingsPanel({
               onCheckedChange={(v) => onSettings({ show_prices: v })}
             />
           </label>
-
-          <div className="grid gap-1.5">
-            <Label htmlFor={`${uid}-4`}>يستطيع العميل الحجز خلال (أيام)</Label>
-            <Input
-              id={`${uid}-4`}
-              type="number"
-              min={1}
-              max={60}
-              className="w-32"
-              value={settings.booking_window_days}
-              onChange={(e) => {
-                const days = Math.round(Number(e.target.value));
-                if (Number.isFinite(days))
-                  onSettings({ booking_window_days: Math.min(60, Math.max(1, days)) });
-              }}
-            />
-            <p className="text-xs text-muted-foreground">من اليوم وحتى 60 يومًا كحد أقصى.</p>
-          </div>
         </div>
       </SectionCard>
     </div>
@@ -855,12 +831,12 @@ function SettingsPanel({
 function SubmissionsPanel({ formId, canWrite }: { formId: string; canWrite: boolean }) {
   const [editingId, setEditingId] = useState<string | null>(null);
   const { data: rows, isLoading } = useQuery({
-    queryKey: ["booking-form-submissions", formId],
+    queryKey: ["booking-requests", "form", formId],
     queryFn: async () => {
       const { data, error } = await supabase
         .from("booking_form_submissions")
         .select(
-          "id, created_at, answers, appointment_id, appointments(appointment_number, appointment_date, start_time, status), patients(full_name, phone)",
+          "id, request_number, status, created_at, answers, appointment_id, services(name), specialties(name), appointments(appointment_number, appointment_date, start_time)",
         )
         .eq("form_id", formId)
         .order("created_at", { ascending: false })
@@ -875,50 +851,57 @@ function SubmissionsPanel({ formId, canWrite }: { formId: string; canWrite: bool
     return (
       <EmptyState
         icon={Inbox}
-        title="لا توجد حجوزات من هذا النموذج بعد"
-        hint="عندما يحجز عميل من الرابط يظهر هنا مع إجاباته، ويُضاف تلقائيًا إلى صفحة المواعيد."
+        title="لا توجد طلبات حجز من هذا النموذج بعد"
+        hint="عندما يرسل عميل طلب حجز من الرابط يظهر هنا مع إجاباته، ويظهر كحجز محتمل في قسم «الحجوزات» حتى يتأكد موعده."
       />
     );
   }
 
   return (
     <div className="space-y-3">
+      <p className="text-xs text-muted-foreground">
+        تابع الطلبات وأكّد مواعيدها من{" "}
+        <Link to="/appointments" className="font-semibold text-primary-emphasis underline">
+          قسم الحجوزات
+        </Link>
+        .
+      </p>
       {rows.map((row) => {
         const appt = row.appointments as unknown as {
           appointment_number: string;
           appointment_date: string;
           start_time: string;
-          status: AppointmentStatus;
         } | null;
-        const patient = row.patients as unknown as { full_name: string; phone: string } | null;
         const answers = (Array.isArray(row.answers) ? row.answers : []) as {
           type?: string;
           label?: string;
           value?: string;
         }[];
+        const value = (type: string) => answers.find((a) => a.type === type)?.value;
+        const service =
+          (row.services as unknown as { name: string } | null)?.name ??
+          (row.specialties as unknown as { name: string } | null)?.name;
         const extra = answers.filter((a) => a.type !== "full_name" && a.type !== "phone");
+        const status = requestStatus(row.status);
         return (
           <article key={row.id} className="surface-raised rounded-2xl p-4">
             <div className="flex flex-wrap items-center gap-3">
               <div className="min-w-0 flex-1">
                 <p className="truncate font-semibold text-foreground">
-                  {patient?.full_name ?? "—"}
+                  {value("full_name") ?? "—"}
                 </p>
                 <p className="text-xs text-muted-foreground">
-                  <span dir="ltr">{patient?.phone ?? ""}</span> · أُرسل{" "}
-                  {formatRelative(row.created_at)}
+                  <span dir="ltr">{value("phone") ?? ""}</span>
+                  {service ? ` · ${service}` : ""} · أُرسل {formatRelative(row.created_at)}
                 </p>
+                <p className="tabular text-[11px] text-muted-foreground">{row.request_number}</p>
               </div>
-              {appt ? (
-                <>
-                  <span className="tabular text-sm font-semibold text-foreground">
-                    {formatDate(appt.appointment_date)} · {formatTime(appt.start_time)}
-                  </span>
-                  <StatusBadge status={appt.status} />
-                </>
-              ) : (
-                <span className="text-xs text-muted-foreground">الموعد محذوف</span>
+              {status === "confirmed" && appt && (
+                <span className="tabular text-sm font-semibold text-foreground">
+                  {formatDate(appt.appointment_date)} · {formatTime(appt.start_time)}
+                </span>
               )}
+              <RequestStatusBadge status={status} />
               {canWrite && row.appointment_id && appt && (
                 <Button
                   size="sm"
